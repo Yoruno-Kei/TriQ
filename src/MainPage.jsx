@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef} from "react";
 import { useNavigate } from "react-router-dom";
 import { generateGeminiResponse } from "./gemini";
 import Sidebar from "./Sidebar";
@@ -19,6 +19,7 @@ export default function MainPage() {
   const [isDebating, setIsDebating] = useState(false);
   const [selectedTag, setSelectedTag] = useState("");
   const [showMoreTurns, setShowMoreTurns] = useState(false);
+  const logRef = useRef([]);
 
   const navigate = useNavigate();
 
@@ -47,12 +48,14 @@ export default function MainPage() {
     let i = 0;
     const interval = setInterval(() => {
       output += text[i];
-      setTypingLog(prefix + output); // 今の発言（入力中）をセット
+      setTypingLog(prefix + output);
       i++;
       if (i >= text.length) {
         clearInterval(interval);
-        setLog((prev) => [...prev, prefix + text]); // 完了時にlogに追加
-        setTypingLog(null); // 入力中表示リセット
+        const finalLine = prefix + text;
+        setLog((prev) => [...prev, finalLine]);
+        logRef.current.push(finalLine);
+        setTypingLog(null);
         resolve();
       }
     }, delay);
@@ -60,16 +63,12 @@ export default function MainPage() {
 };
 
 // 2. handleStartDebate内の記録管理をログ中心に
-
 const handleStartDebate = async () => {
   if (!topic.trim()) return;
-  if (turns < 4) {
-    alert("応酬回数は最低4回に設定してください");
-    return;
-  }
-
+ 
   setIsDebating(true);
   setLog([]);
+  logRef.current = [];
   setFinalDecision("");
   setCurrentTopic(topic);
 
@@ -83,7 +82,6 @@ const handleStartDebate = async () => {
     )
   )
     .trim()
-    .slice(0, 100);
   ai1History.push(ai1);
   await typeText(ai1, "🧠 AI-1（賛成）：");
 
@@ -94,7 +92,6 @@ const handleStartDebate = async () => {
     )
   )
     .trim()
-    .slice(0, 100);
   ai2History.push(ai2);
   await typeText(ai2, "⚖️ AI-2（反対）：");
 
@@ -104,14 +101,14 @@ const handleStartDebate = async () => {
       // AI-1応酬
       const latestAi2 = ai2History[ai2History.length - 1];
       const prompt = `あなたはAI討論アプリの肯定役（AI-1）です。\n先ほどのAI-2の意見に対して、論理と証拠に基づき再反論してください。\n感情に流されず、専門家としての冷静な視点から答えてください（100文字以内）。\n議題：「${topic}」\nAI-2の意見：「${latestAi2}」`;
-      ai1 = (await generateGeminiResponse(prompt)).trim().slice(0, 100);
+      ai1 = (await generateGeminiResponse(prompt)).trim();
       ai1History.push(ai1);
       await typeText(ai1, "🧠 AI-1（再反論）：");
     } else {
       // AI-2応酬
       const latestAi1 = ai1History[ai1History.length - 1];
       const prompt = `あなたはAI討論アプリの反対役（AI-2）です。\nAI-1の再反論に対し、哲学的観点から再度反論を試みてください。\n真理への問いかけを忘れず、論理の深さを意識しながら語ってください（100文字以内）。\n議題：「${topic}」\nAI-1の意見：「${latestAi1}」`;
-      ai2 = (await generateGeminiResponse(prompt)).trim().slice(0, 100);
+      ai2 = (await generateGeminiResponse(prompt)).trim();
       ai2History.push(ai2);
       await typeText(ai2, "⚖️ AI-2（再反論）：");
     }
@@ -124,8 +121,7 @@ const handleStartDebate = async () => {
       `あなたはAI討論アプリの肯定役（AI-1）です。以下はこれまでの自分の意見の流れです：「${summary1}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
     )
   )
-    .trim()
-    .slice(0, 200);
+    .trim();
   await typeText(finalAI1, "🧠 AI-1（最終意見）：");
 
   const summary2 = ai2History.join(" / ");
@@ -134,8 +130,7 @@ const handleStartDebate = async () => {
       `あなたはAI討論アプリの反対役（AI-2）です。以下はこれまでの自分の意見の流れです：「${summary2}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
     )
   )
-    .trim()
-    .slice(0, 200);
+    .trim();
   await typeText(finalAI2, "⚖️ AI-2（最終意見）：");
 
   // 判定 AI-3
@@ -199,7 +194,7 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
     id: crypto.randomUUID(),
     topic,
     tags: [],
-    log,
+    log: logRef.current,
     winner,
     comment: "",
     timestamp: new Date().toISOString(),
@@ -225,20 +220,22 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
         closeSidebar={closeSidebar}
         savedLogs={savedLogs}
         filteredLogs={savedLogs.filter((log) => {
-          const keywordMatch = log.topic.includes(searchKeyword);
-          const filterMatch =
-            filter === "all"
-              ? true
-              : log.winner.includes(
-            filter === "pro"
-              ? "賛成"
-              : filter === "con"
-              ? "反対"
-              : "判定不能"
-          );
-        const tagMatch = selectedTag === "" || (log.tags || []).includes(selectedTag);
-        return keywordMatch && filterMatch && tagMatch;
-      })}
+  const keywordMatch = log.topic.includes(searchKeyword);
+
+  const filterMatch =
+    filter === "all"
+      ? true
+      : filter === "pro"
+      ? log.winner.startsWith("AI-1")
+      : filter === "con"
+      ? log.winner.startsWith("AI-2")
+      : log.winner.startsWith("判定不能");
+
+  const tagMatch = selectedTag === "" || (log.tags || []).includes(selectedTag);
+
+  return keywordMatch && filterMatch && tagMatch;
+})}
+
         searchKeyword={searchKeyword}
         setSearchKeyword={setSearchKeyword}
         filter={filter}

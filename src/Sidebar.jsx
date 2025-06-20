@@ -116,7 +116,7 @@ export default function Sidebar({
               key={entry.id}
               className="relative p-4 mb-4 rounded bg-gray-800 hover:bg-gray-700 cursor-pointer border border-indigo-700"
               onClick={() => {
-                navigate(`/log/${savedLogs.findIndex((l) => l.id === entry.id)}`);
+                navigate(`/log/${entry.id}`);
                 closeSidebar();
               }}
             >

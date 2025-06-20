@@ -4,37 +4,105 @@ import { useParams, useNavigate } from "react-router-dom";
 export default function LogDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
-  const entry = logs.find((log) => String(log.id) === String(id));
 
-  const [comment, setComment] = useState(entry?.comment || "");
+  // logsをstate管理する
+  const [logsState, setLogsState] = useState(() =>
+    JSON.parse(localStorage.getItem("triqLogs") || "[]")
+  );
 
-  // 🔍 タグ抽出ユーティリティ
-  const extractTags = (text) => {
-    const matches = text.match(/#\S+?(?=\s|$|[.,!?"'“”‘’])/g) || [];
-    return [...new Set(matches.map((t) => t.trim()))];
+  // entryStateはlogsStateとidに依存して設定
+  const [entryState, setEntryState] = useState(() =>
+    logsState.find((log) => log.id?.trim() === id?.trim())
+  );
+
+  // idかlogsStateが変わったらentryStateを更新
+  useEffect(() => {
+    const found = logsState.find((log) => log.id?.trim() === id?.trim());
+    setEntryState(found);
+  }, [id, logsState]);
+
+  // コメント用state
+  const [comment, setComment] = useState(entryState?.comment || "");
+
+  // コメントがentryState変化で変わったら反映
+  useEffect(() => {
+    setComment(entryState?.comment || "");
+  }, [entryState]);
+
+  // 新規タグ入力用state
+  const [newTagInput, setNewTagInput] = useState("");
+
+  // コメント欄の変更（#除去）
+  const handleCommentChange = (e) => {
+    const filtered = e.target.value.replace(/#/g, "");
+    setComment(filtered);
+
+    if (!entryState) return;
+    const newEntry = { ...entryState, comment: filtered };
+    const newLogs = logsState.map((log) =>
+      log.id === newEntry.id ? newEntry : log
+    );
+    setEntryState(newEntry);
+    setLogsState(newLogs);
+    localStorage.setItem("triqLogs", JSON.stringify(newLogs));
   };
 
-  // 🔄 コメント変更時にタグを自動保存
-  useEffect(() => {
-    if (!entry) return;
-    const updatedTags = extractTags(comment);
-    entry.comment = comment;
-    entry.tags = updatedTags;
+  // タグ追加
+  const addTag = (tagText) => {
+    if (!entryState) return;
+    const tag = tagText.trim().replace(/^#/, "");
+    if (!tag) return;
+    if (!entryState.tags) entryState.tags = [];
+    if (entryState.tags.includes(tag)) return;
 
-    const index = logs.findIndex((log) => log.id === id);
-    if (index !== -1) {
-      logs[index] = entry;
-      localStorage.setItem("triqLogs", JSON.stringify(logs));
+    const newTags = [...entryState.tags, tag];
+    const newEntry = { ...entryState, tags: newTags };
+    const newLogs = logsState.map((log) =>
+      log.id === newEntry.id ? newEntry : log
+    );
+
+    setEntryState(newEntry);
+    setLogsState(newLogs);
+    localStorage.setItem("triqLogs", JSON.stringify(newLogs));
+  };
+
+  // タグ削除
+  const removeTag = (tagToRemove) => {
+    if (!entryState || !entryState.tags) return;
+
+    const newTags = entryState.tags.filter((t) => t !== tagToRemove);
+    const newEntry = { ...entryState, tags: newTags };
+    const newLogs = logsState.map((log) =>
+      log.id === newEntry.id ? newEntry : log
+    );
+
+    setEntryState(newEntry);
+    setLogsState(newLogs);
+    localStorage.setItem("triqLogs", JSON.stringify(newLogs));
+  };
+
+  // 新タグ入力欄Enter時
+  const handleTagInputKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (newTagInput.startsWith("#")) {
+        addTag(newTagInput);
+        setNewTagInput("");
+      }
     }
-  }, [comment]);
+  };
 
-  if (!entry) {
+  // 戻るボタンは必ずホームへ遷移
+  const handleBack = () => {
+    navigate("/");
+  };
+
+  if (!entryState) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white flex flex-col justify-center items-center p-6">
         <p className="text-red-400 font-semibold text-lg mb-6">ログが見つかりません。</p>
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold"
         >
           戻る
@@ -43,9 +111,12 @@ export default function LogDetail() {
     );
   }
 
-  // 🧠 発言種別の判定
+  // 発言種別の判定関数などは元のままでOK
   const getPhase = (line) => {
-    if (line.startsWith("🧠 AI-1（最終意見）：") || line.startsWith("⚖️ AI-2（最終意見）：")) {
+    if (
+      line.startsWith("🧠 AI-1（最終意見）：") ||
+      line.startsWith("⚖️ AI-2（最終意見）：")
+    ) {
       return "final";
     }
     if (line.startsWith("🧩")) return "judge";
@@ -59,7 +130,6 @@ export default function LogDetail() {
     return "other";
   };
 
-  // 🌈 #タグのハイライト表示
   const highlightTags = (text) => {
     const regex = /(#\S+?)(?=\s|$|[.,!?"'“”‘’])/g;
     const parts = [];
@@ -86,15 +156,30 @@ export default function LogDetail() {
     return parts;
   };
 
-  const exchangeLogs = useMemo(() => entry.log.filter((l) => getPhase(l) === "exchange"), [entry.log]);
-  const finalLogs = useMemo(() => entry.log.filter((l) => getPhase(l) === "final"), [entry.log]);
-  const judgeLogs = useMemo(() => entry.log.filter((l) => getPhase(l) === "judge"), [entry.log]);
+  const exchangeLogs = useMemo(() => {
+    if (!entryState || !Array.isArray(entryState.log)) return [];
+    return entryState.log.filter((l) => getPhase(l) === "exchange");
+  }, [entryState]);
+
+  const finalLogs = useMemo(() => {
+    if (!entryState || !Array.isArray(entryState.log)) return [];
+    return entryState.log.filter((l) => getPhase(l) === "final");
+  }, [entryState]);
+
+  const judgeLogs = useMemo(() => {
+    if (!entryState || !Array.isArray(entryState.log)) return [];
+    return entryState.log.filter((l) => getPhase(l) === "judge");
+  }, [entryState]);
 
   const renderBubble = (line, idx) => {
     const speaker = getSpeaker(line);
-    const clean = line.replace(/^🧠 AI-1（最終意見）：|^🧠 |^⚖️ AI-2（最終意見）：|^⚖️ |^🧩 /, "");
+    const clean = line.replace(
+      /^🧠 AI-1（最終意見）：|^🧠 |^⚖️ AI-2（最終意見）：|^⚖️ |^🧩 /,
+      ""
+    );
 
-    const baseClasses = "max-w-[90%] p-5 rounded-xl shadow-md mb-4 whitespace-pre-wrap break-words";
+    const baseClasses =
+      "max-w-[90%] p-5 rounded-xl shadow-md mb-4 whitespace-pre-wrap break-words";
     let bubbleClass = "";
     let containerClass = "flex ";
     let label = "";
@@ -134,7 +219,7 @@ export default function LogDetail() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white p-6 pb-24 font-sans relative">
       <button
-        onClick={() => navigate(-1)}
+        onClick={handleBack}
         className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold z-50"
       >
         ← 戻る
@@ -144,25 +229,58 @@ export default function LogDetail() {
         <section>
           <h2 className="text-3xl font-bold text-indigo-300 mb-3">議題</h2>
           <div className="bg-gray-800 p-6 rounded-lg text-lg border border-gray-700 whitespace-pre-wrap">
-            {entry.topic}
+            {entryState.topic}
           </div>
         </section>
 
-        {entry.tags?.length > 0 && (
+        {entryState.tags?.length > 0 && (
           <section>
             <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ</h2>
             <div className="flex flex-wrap gap-2">
-              {entry.tags.map((tag, idx) => (
+              {entryState.tags.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="inline-block bg-indigo-700 text-white px-2 py-0.5 rounded-full text-sm font-medium"
+                  className="inline-flex items-center bg-indigo-700 text-white px-3 py-1 rounded-full text-sm font-medium select-none"
                 >
-                  {tag}
+                  #{tag}
+                  <button
+                    onClick={() => removeTag(tag)}
+                    className="ml-2 text-indigo-200 hover:text-white font-bold"
+                    aria-label={`タグ ${tag} を削除`}
+                    type="button"
+                  >
+                    ×
+                  </button>
                 </span>
               ))}
             </div>
           </section>
         )}
+
+        <section>
+          <h2 className="text-xl font-semibold text-indigo-300 mb-2">
+            タグ追加 (#付きで入力してEnter)
+          </h2>
+          <input
+            type="text"
+            value={newTagInput}
+            onChange={(e) => setNewTagInput(e.target.value)}
+            onKeyDown={handleTagInputKeyDown}
+            placeholder="#タグを入力してEnter"
+            className="w-full p-2 rounded bg-gray-800 border border-indigo-600 text-white placeholder-gray-400"
+          />
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold text-indigo-200 mb-4">コメント・メモ</h2>
+          <textarea
+            rows={4}
+            value={comment}
+            onChange={handleCommentChange}
+            placeholder="ここにメモを入力"
+            className="w-full p-4 rounded-lg bg-gray-800 border border-gray-700 text-white"
+          />
+        </section>
 
         {exchangeLogs.length > 0 && (
           <section>
@@ -185,19 +303,8 @@ export default function LogDetail() {
           </section>
         )}
 
-        <section>
-          <h2 className="text-2xl font-semibold text-indigo-200 mb-4">コメント・メモ</h2>
-          <textarea
-            rows={4}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="ここにメモを入力（#タグ も記述可能）"
-            className="w-full p-4 rounded-lg bg-gray-800 border border-gray-700 text-white"
-          />
-        </section>
-
         <div className="text-sm text-gray-400 text-right">
-          保存日時：{new Date(entry.timestamp).toLocaleString()}
+          保存日時：{new Date(entryState.timestamp).toLocaleString()}
         </div>
       </div>
     </div>
