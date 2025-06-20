@@ -102,15 +102,8 @@ export default function LogDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white px-5 py-8 sm:p-8 font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white px-5 py-8 sm:p-8 font-sans pb-24">
       <div className="max-w-3xl mx-auto space-y-8">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-8 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded shadow w-full sm:w-auto text-lg font-semibold"
-        >
-          ← ホームに戻る
-        </button>
-
         <section className="mb-10">
           <h2 className="text-3xl sm:text-4xl font-bold text-blue-300 mb-4">📝 議題</h2>
           <p className="bg-gray-800 p-6 rounded-lg shadow text-white whitespace-pre-wrap border border-gray-600 text-lg sm:text-xl">
@@ -130,7 +123,7 @@ export default function LogDetail() {
                   className={`relative max-w-[95%] sm:max-w-[80%] p-6 rounded-lg shadow-md whitespace-pre-wrap border ${bubbleClass} ${selfClass}`}
                 >
                   <span className="text-base font-semibold opacity-90">{label}</span>
-                  <p className="mt-2 text-base sm:text-lg">{cleanText}</p>
+                  <p className="mt-2 text-base sm:text-lg leading-relaxed">{cleanText}</p>
                 </div>
               );
             })}
@@ -151,7 +144,7 @@ export default function LogDetail() {
             onChange={(e) => setComment(e.target.value)}
             rows={6}
             placeholder="ここに自由にメモを入力してください"
-            className="w-full p-3 rounded border border-gray-600 bg-gray-800 text-white resize-y"
+            className="w-full p-3 rounded border border-gray-600 bg-gray-800 text-white resize-y text-base sm:text-lg"
             aria-label="コメント・メモ入力"
           />
           <button
@@ -170,7 +163,7 @@ export default function LogDetail() {
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
             placeholder="タグをカンマ区切りで入力（例：教育,経済）"
-            className="w-full p-3 rounded border border-gray-600 bg-gray-800 text-white"
+            className="w-full p-3 rounded border border-gray-600 bg-gray-800 text-white text-base sm:text-lg"
             aria-label="タグ編集入力"
           />
           <button
@@ -186,7 +179,7 @@ export default function LogDetail() {
           保存日時: {new Date(entry.timestamp).toLocaleString()}
         </div>
 
-        <section className="flex flex-wrap gap-4">
+        <section className="flex flex-wrap gap-4 pb-20">
           <button
             onClick={handleNativeShare}
             className="flex-1 min-w-[140px] bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-3 rounded shadow text-lg font-semibold"
@@ -212,6 +205,16 @@ export default function LogDetail() {
             💬 LINE
           </button>
         </section>
+      </div>
+
+      {/* フッター固定の戻るボタン */}
+      <div className="fixed bottom-4 left-0 w-full px-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-full text-lg font-semibold shadow-md sm:max-w-xs mx-auto block"
+        >
+          ← ホームに戻る
+        </button>
       </div>
     </div>
   );
