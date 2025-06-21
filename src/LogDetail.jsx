@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
 
 export default function LogDetail() {
   const { id } = useParams();
@@ -233,16 +234,34 @@ export default function LogDetail() {
           </div>
         </section>
 
-        <section className="mb-6">
-  <h2 className="text-xl font-semibold text-indigo-300 mb-2">AIキャラ選択</h2>
-  <div className="flex gap-6">
-    <div className="bg-blue-600 p-3 rounded-lg flex-1 text-center">
-      <div className="text-white font-bold text-lg mb-1">🧠 AI-1（賛成）</div>
-      <div className="text-indigo-200">{entryState.ai1PersonaLabel || "不明"}</div>
+<section className="mb-6">
+  <h2 className="text-xl font-semibold text-indigo-300 mb-4">AIキャラ選択</h2>
+  <div className="flex gap-6 flex-wrap justify-center">
+    <div className="bg-blue-600 p-4 rounded-xl flex-1 min-w-[160px] max-w-[240px] text-center shadow-lg">
+      <div className="text-white font-bold text-lg mb-2">🧠 AI-1（賛成）</div>
+      {entryState.ai1PersonaKey && AI1_CHARACTERS[entryState.ai1PersonaKey]?.image && (
+        <img
+          src={AI1_CHARACTERS[entryState.ai1PersonaKey].image}
+          alt={entryState.ai1PersonaLabel}
+          className="w-24 h-24 mx-auto rounded-full mb-2 object-cover border-2 border-white shadow-md"
+        />
+      )}
+      <div className="text-indigo-100 text-sm font-medium">
+        {entryState.ai1PersonaLabel || "不明"}
+      </div>
     </div>
-    <div className="bg-red-600 p-3 rounded-lg flex-1 text-center">
-      <div className="text-white font-bold text-lg mb-1">⚖️ AI-2（反対）</div>
-      <div className="text-red-200">{entryState.ai2PersonaLabel || "不明"}</div>
+    <div className="bg-red-600 p-4 rounded-xl flex-1 min-w-[160px] max-w-[240px] text-center shadow-lg">
+      <div className="text-white font-bold text-lg mb-2">⚖️ AI-2（反対）</div>
+      {entryState.ai2PersonaKey && AI2_CHARACTERS[entryState.ai2PersonaKey]?.image && (
+        <img
+          src={AI2_CHARACTERS[entryState.ai2PersonaKey].image}
+          alt={entryState.ai2PersonaLabel}
+          className="w-24 h-24 mx-auto rounded-full mb-2 object-cover border-2 border-white shadow-md"
+        />
+      )}
+      <div className="text-red-100 text-sm font-medium">
+        {entryState.ai2PersonaLabel || "不明"}
+      </div>
     </div>
   </div>
 </section>

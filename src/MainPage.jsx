@@ -5,6 +5,8 @@ import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
 import { BookOpen, X } from "lucide-react";
 import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
+import CharacterSlider from "./CharacterSlider";
+import StartDebateButton from "./StartDebateButton";
 
 export default function MainPage() {
   const [topic, setTopic] = useState("");
@@ -48,14 +50,6 @@ export default function MainPage() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const closeSidebar = () => setSidebarOpen(false);
 
-  const handleScrollKey = (e, ref) => {
-    if (e.key === "ArrowRight") {
-      ref.current.scrollBy({ left: 150, behavior: "smooth" });
-    } else if (e.key === "ArrowLeft") {
-      ref.current.scrollBy({ left: -150, behavior: "smooth" });
-    }
-  };
-
   const typeText = (text, prefix = "", delay = 20) => {
     return new Promise((resolve) => {
       let output = "";
@@ -92,25 +86,25 @@ export default function MainPage() {
     const ai2History = [];
 
     const ai1Intro = await generateGeminiResponse(
-      `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.intro}\n議題：「${topic}」`
+      `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.intro}(100文字以内で)\n議題：「${topic}」`
     );
     ai1History.push(ai1Intro.trim());
     await typeText(ai1Intro.trim(), "🧠 AI-1（賛成）：");
 
     const ai2Intro = await generateGeminiResponse(
-      `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.intro}\n議題：「${topic}」\nAI-1の意見：「${ai1Intro.trim()}」`
+      `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.intro}(100文字以内で)\n議題：「${topic}」\nAI-1の意見：「${ai1Intro.trim()}」`
     );
     ai2History.push(ai2Intro.trim());
     await typeText(ai2Intro.trim(), "⚖️ AI-2（反対）：");
 
     for (let i = 0; i < turns - 2; i++) {
       if (i % 2 === 0) {
-        const prompt = `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.rebuttal}\n議題：「${topic}」\nAI-2の意見：「${ai2History[ai2History.length - 1]}」`;
+        const prompt = `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.rebuttal}(100文字以内で)\n議題：「${topic}」\nAI-2の意見：「${ai2History[ai2History.length - 1]}」`;
         const response = await generateGeminiResponse(prompt);
         ai1History.push(response.trim());
         await typeText(response.trim(), "🧠 AI-1（再反論）：");
       } else {
-        const prompt = `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.rebuttal}\n議題：「${topic}」\nAI-1の意見：「${ai1History[ai1History.length - 1]}」`;
+        const prompt = `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.rebuttal}(100文字以内で)\n議題：「${topic}」\nAI-1の意見：「${ai1History[ai1History.length - 1]}」`;
         const response = await generateGeminiResponse(prompt);
         ai2History.push(response.trim());
         await typeText(response.trim(), "⚖️ AI-2（再反論）：");
@@ -174,7 +168,7 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
       topic,
       tags: [],
       log: logRef.current,
-      winner,
+      winner: winnerMap[score] || "判定不能",
       comment: "",
       timestamp: new Date().toISOString(),
       ai1PersonaKey: ai1Persona,
@@ -191,7 +185,6 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
     setIsDebating(false);
   };
 
-
   return (
     <main
       className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-800 text-white p-6 font-sans relative"
@@ -202,22 +195,21 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
         closeSidebar={closeSidebar}
         savedLogs={savedLogs}
         filteredLogs={savedLogs.filter((log) => {
-  const keywordMatch = log.topic.includes(searchKeyword);
+          const keywordMatch = log.topic.includes(searchKeyword);
 
-  const filterMatch =
-    filter === "all"
-      ? true
-      : filter === "pro"
-      ? log.winner.startsWith("AI-1")
-      : filter === "con"
-      ? log.winner.startsWith("AI-2")
-      : log.winner.startsWith("判定不能");
+          const filterMatch =
+            filter === "all"
+              ? true
+              : filter === "pro"
+              ? log.winner.startsWith("AI-1")
+              : filter === "con"
+              ? log.winner.startsWith("AI-2")
+              : log.winner.startsWith("判定不能");
 
-  const tagMatch = selectedTag === "" || (log.tags || []).includes(selectedTag);
+          const tagMatch = selectedTag === "" || (log.tags || []).includes(selectedTag);
 
-  return keywordMatch && filterMatch && tagMatch;
-})}
-
+          return keywordMatch && filterMatch && tagMatch;
+        })}
         searchKeyword={searchKeyword}
         setSearchKeyword={setSearchKeyword}
         filter={filter}
@@ -242,172 +234,53 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
           onChange={(e) => setTopic(e.target.value)}
         />
 
-      {/* AI キャラ選択 UI（スライダー形式） */}
-<div className="mb-8">
-  <div className="text-white font-semibold mb-2">AI-1（賛成役）を選ぶ</div>
-  <div
-    ref={ai1ScrollRef}
-    tabIndex={0}
-    onKeyDown={(e) => handleScrollKey(e, ai1ScrollRef)}
-    className="overflow-x-auto flex gap-4 py-2 px-4 scrollbar-hide"
-    style={{ scrollSnapType: "x mandatory" }}
-  >
-    {Object.entries(AI1_CHARACTERS).map(([key, char]) => {
-      const selected = ai1Persona === key;
-      return (
-        <div
-          key={key}
-          onClick={() => setAi1Persona(key)}
-          className={`min-w-[140px] flex-shrink-0 rounded-xl border transition cursor-pointer relative
-            ${
-              selected
-                ? "border-indigo-500 scale-105 shadow-xl bg-gradient-to-b from-indigo-900 to-gray-800"
-                : "border-gray-700 bg-gray-800"
-            }
-            hover:shadow-lg hover:scale-105 duration-200`}
-          style={{ scrollSnapAlign: "start" }}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") setAi1Persona(key);
-          }}
-        >
-          <img
-            src={char.image}
-            alt={char.label}
-            className="w-full h-28 object-cover rounded-t-xl"
-          />
-          <div className="p-2 text-center text-sm font-semibold text-white">
-            {char.label}
-          </div>
-        </div>
-      );
-    })}
-    {/* 右端のスペースを確保 */}
-    <div className="min-w-[190px] flex-shrink-0" />
-  </div>
+        
+<CharacterSlider
+  title="AI-1（賛成役）を選ぶ"
+  characters={AI1_CHARACTERS}
+  selectedKey={ai1Persona}
+  setSelectedKey={setAi1Persona}
+  scrollRef={ai1ScrollRef}
+/>
 
-  {ai1Persona && (
-    <div className="mt-4 p-4 rounded-xl bg-gray-800 border border-indigo-700 shadow-inner">
-      <h3 className="text-lg font-bold text-indigo-300">
-        {AI1_CHARACTERS[ai1Persona].label}
-      </h3>
-      <p className="text-sm text-gray-300 mt-1">
-        {AI1_CHARACTERS[ai1Persona].description}
-      </p>
-      <p className="text-xs italic text-gray-400 mt-2">
-        例：{AI1_CHARACTERS[ai1Persona].preview}
-      </p>
-    </div>
-  )}
-</div>
 
-{/* AI-2 キャラ選択 UI */}
-<div className="mb-8">
-  <div className="text-white font-semibold mb-2">AI-2（反対役）を選ぶ</div>
-  <div
-    ref={ai2ScrollRef}
-    tabIndex={0}
-    onKeyDown={(e) => handleScrollKey(e, ai2ScrollRef)}
-    className="overflow-x-auto flex gap-4 py-2 px-4 scrollbar-hide"
-    style={{ scrollSnapType: "x mandatory" }}
-  >
-    {Object.entries(AI2_CHARACTERS).map(([key, char]) => {
-      const selected = ai2Persona === key;
-      return (
-        <div
-          key={key}
-          onClick={() => setAi2Persona(key)}
-          className={`min-w-[140px] flex-shrink-0 rounded-xl border transition cursor-pointer relative
-            ${
-              selected
-                ? "border-indigo-500 scale-105 shadow-xl bg-gradient-to-b from-indigo-900 to-gray-800"
-                : "border-gray-700 bg-gray-800"
-            }
-            hover:shadow-lg hover:scale-105 duration-200`}
-          style={{ scrollSnapAlign: "start" }}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") setAi2Persona(key);
-          }}
-        >
-          <img
-            src={char.image}
-            alt={char.label}
-            className="w-full h-28 object-cover rounded-t-xl"
-          />
-          <div className="p-2 text-center text-sm font-semibold text-white">
-            {char.label}
-          </div>
-        </div>
-      );
-    })}
-    {/* 右端のスペースを確保 */}
-    <div className="min-w-[190px] flex-shrink-0" />
-  </div>
-
-  {ai2Persona && (
-    <div className="mt-4 p-4 rounded-xl bg-gray-800 border border-indigo-700 shadow-inner">
-      <h3 className="text-lg font-bold text-indigo-300">
-        {AI2_CHARACTERS[ai2Persona].label}
-      </h3>
-      <p className="text-sm text-gray-300 mt-1">
-        {AI2_CHARACTERS[ai2Persona].description}
-      </p>
-      <p className="text-xs italic text-gray-400 mt-2">
-        例：{AI2_CHARACTERS[ai2Persona].preview}
-      </p>
-    </div>
-  )}
-</div>
+<CharacterSlider
+  title="AI-2（反対役）を選ぶ"
+  characters={AI2_CHARACTERS}
+  selectedKey={ai2Persona}
+  setSelectedKey={setAi2Persona}
+  scrollRef={ai2ScrollRef}
+/>
 
         {/* 応酬回数セレクト UI */}
-  <div className="mb-4">
-    <label className="block text-sm text-gray-300 mb-1">応酬回数</label>
-    <select
-      value={turns}
-      onChange={(e) => setTurns(Number(e.target.value))}
-      className="w-full p-3 rounded bg-gray-900 text-white border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-    >
-      {[4, 6, 8, 10, ...(showMoreTurns ? [12, 14, 16] : [])].map((num) => (
-        <option key={num} value={num}>
-          {num}回（{num / 2}往復）{num === 8 ? "（おすすめ）" : ""}
-        </option>
-      ))}
-    </select>
-    {!showMoreTurns && (
-      <button
-        onClick={() => setShowMoreTurns(true)}
-        className="mt-2 text-sm text-indigo-400 hover:underline"
-      >
-        もっと見る
-      </button>
-    )}
-  </div>
-
-        <button
-          onClick={handleStartDebate}
-          disabled={!topic.trim() || isDebating}
-          className={`w-full p-4 rounded text-white text-xl font-bold transition relative overflow-hidden
-            ${
-              isDebating
-                ? "bg-gray-800 cursor-not-allowed"
-                : "bg-gradient-to-r from-indigo-600 to-purple-700 hover:opacity-90"
-            }`}
-        >
-          {isDebating ? (
-            <div className="w-full h-5 flex justify-center items-center gap-1 animate-pulse">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-full w-1 rounded-full bg-indigo-400 animate-wave`}
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                />
-              ))}
-            </div>
-          ) : (
-            <span>開始</span>
+        <div className="mb-4">
+          <label className="block text-sm text-gray-300 mb-1">応酬回数</label>
+          <select
+            value={turns}
+            onChange={(e) => setTurns(Number(e.target.value))}
+            className="w-full p-3 rounded bg-gray-900 text-white border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {[4, 6, 8, 10, ...(showMoreTurns ? [12, 14, 16] : [])].map((num) => (
+              <option key={num} value={num}>
+                {num}回（{num / 2}往復）{num === 8 ? "（おすすめ）" : ""}
+              </option>
+            ))}
+          </select>
+          {!showMoreTurns && (
+            <button
+              onClick={() => setShowMoreTurns(true)}
+              className="mt-2 text-sm text-indigo-400 hover:underline"
+            >
+              もっと見る
+            </button>
           )}
-        </button>
+        </div>
+
+        <StartDebateButton
+  disabled={!topic.trim() || isDebating}
+  onClick={handleStartDebate}
+  isDebating={isDebating}
+/>
 
         {currentTopic && (
           <div className="text-center text-indigo-300 mt-4 select-text text-lg sm:text-xl font-semibold">
