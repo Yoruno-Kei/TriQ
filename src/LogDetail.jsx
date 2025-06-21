@@ -233,6 +233,20 @@ export default function LogDetail() {
           </div>
         </section>
 
+        <section className="mb-6">
+  <h2 className="text-xl font-semibold text-indigo-300 mb-2">AIキャラ選択</h2>
+  <div className="flex gap-6">
+    <div className="bg-blue-600 p-3 rounded-lg flex-1 text-center">
+      <div className="text-white font-bold text-lg mb-1">🧠 AI-1（賛成）</div>
+      <div className="text-indigo-200">{entryState.ai1PersonaLabel || "不明"}</div>
+    </div>
+    <div className="bg-red-600 p-3 rounded-lg flex-1 text-center">
+      <div className="text-white font-bold text-lg mb-1">⚖️ AI-2（反対）</div>
+      <div className="text-red-200">{entryState.ai2PersonaLabel || "不明"}</div>
+    </div>
+  </div>
+</section>
+
         {entryState.tags?.length > 0 && (
           <section>
             <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ</h2>

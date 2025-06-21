@@ -4,10 +4,11 @@ import { generateGeminiResponse } from "./gemini";
 import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
 import { BookOpen, X } from "lucide-react";
+import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
 
 export default function MainPage() {
   const [topic, setTopic] = useState("");
-  const [turns, setTurns] = useState(4); // 応酬回数（最低4）
+  const [turns, setTurns] = useState(4);
   const [log, setLog] = useState([]);
   const [finalDecision, setFinalDecision] = useState("");
   const [savedLogs, setSavedLogs] = useState([]);
@@ -19,6 +20,9 @@ export default function MainPage() {
   const [isDebating, setIsDebating] = useState(false);
   const [selectedTag, setSelectedTag] = useState("");
   const [showMoreTurns, setShowMoreTurns] = useState(false);
+  const [ai1Persona, setAi1Persona] = useState("scientist");
+  const [ai2Persona, setAi2Persona] = useState("philosopher");
+
   const logRef = useRef([]);
 
   const navigate = useNavigate();
@@ -43,98 +47,83 @@ export default function MainPage() {
   const closeSidebar = () => setSidebarOpen(false);
 
   const typeText = (text, prefix = "", delay = 20) => {
-  return new Promise((resolve) => {
-    let output = "";
-    let i = 0;
-    const interval = setInterval(() => {
-      output += text[i];
-      setTypingLog(prefix + output);
-      i++;
-      if (i >= text.length) {
-        clearInterval(interval);
-        const finalLine = prefix + text;
-        setLog((prev) => [...prev, finalLine]);
-        logRef.current.push(finalLine);
-        setTypingLog(null);
-        resolve();
+    return new Promise((resolve) => {
+      let output = "";
+      let i = 0;
+      const interval = setInterval(() => {
+        output += text[i];
+        setTypingLog(prefix + output);
+        i++;
+        if (i >= text.length) {
+          clearInterval(interval);
+          const finalLine = prefix + text;
+          setLog((prev) => [...prev, finalLine]);
+          logRef.current.push(finalLine);
+          setTypingLog(null);
+          resolve();
+        }
+      }, delay);
+    });
+  };
+
+  const handleStartDebate = async () => {
+    if (!topic.trim()) return;
+
+    setIsDebating(true);
+    setLog([]);
+    logRef.current = [];
+    setFinalDecision("");
+    setCurrentTopic(topic);
+
+    const ai1Prompts = AI1_CHARACTERS[ai1Persona].prompts;
+    const ai2Prompts = AI2_CHARACTERS[ai2Persona].prompts;
+
+    const ai1History = [];
+    const ai2History = [];
+
+    const ai1Intro = await generateGeminiResponse(
+      `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.intro}\n議題：「${topic}」`
+    );
+    ai1History.push(ai1Intro.trim());
+    await typeText(ai1Intro.trim(), "🧠 AI-1（賛成）：");
+
+    const ai2Intro = await generateGeminiResponse(
+      `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.intro}\n議題：「${topic}」\nAI-1の意見：「${ai1Intro.trim()}」`
+    );
+    ai2History.push(ai2Intro.trim());
+    await typeText(ai2Intro.trim(), "⚖️ AI-2（反対）：");
+
+    for (let i = 0; i < turns - 2; i++) {
+      if (i % 2 === 0) {
+        const prompt = `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.rebuttal}\n議題：「${topic}」\nAI-2の意見：「${ai2History[ai2History.length - 1]}」`;
+        const response = await generateGeminiResponse(prompt);
+        ai1History.push(response.trim());
+        await typeText(response.trim(), "🧠 AI-1（再反論）：");
+      } else {
+        const prompt = `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.rebuttal}\n議題：「${topic}」\nAI-1の意見：「${ai1History[ai1History.length - 1]}」`;
+        const response = await generateGeminiResponse(prompt);
+        ai2History.push(response.trim());
+        await typeText(response.trim(), "⚖️ AI-2（再反論）：");
       }
-    }, delay);
-  });
-};
-
-// 2. handleStartDebate内の記録管理をログ中心に
-const handleStartDebate = async () => {
-  if (!topic.trim()) return;
- 
-  setIsDebating(true);
-  setLog([]);
-  logRef.current = [];
-  setFinalDecision("");
-  setCurrentTopic(topic);
-
-  const ai1History = [];
-  const ai2History = [];
-
-  // 初回AI-1
-  let ai1 = (
-    await generateGeminiResponse(
-     `あなたはAI討論アプリの肯定役（AI-1）です。\nあなたは科学的合理主義者として、冷静に事実や論理に基づいて主張を行います。\n専門的な知見を背景に、誤解を与えず簡潔に賛成意見を述べてください（100文字以内）。\n\n議題：「${topic}」`
-    )
-  )
-    .trim()
-  ai1History.push(ai1);
-  await typeText(ai1, "🧠 AI-1（賛成）：");
-
-  // 初回AI-2
-  let ai2 = (
-    await generateGeminiResponse(
-      `あなたはAI討論アプリの反対役（AI-2）です。\nあなたは思索的な哲学者として、前提や論理の矛盾に着目しながら反論を行います。\n相手の主張に敬意を払いながらも、深い洞察と問いかけによって意見を展開してください（100文字以内）。\n\n議題：「${topic}」\nAI-1の意見：「${ai1}」`
-    )
-  )
-    .trim()
-  ai2History.push(ai2);
-  await typeText(ai2, "⚖️ AI-2（反対）：");
-
-  // 応酬フェーズ
-  for (let i = 0; i < turns - 2; i++) {
-    if (i % 2 === 0) {
-      // AI-1応酬
-      const latestAi2 = ai2History[ai2History.length - 1];
-      const prompt = `あなたはAI討論アプリの肯定役（AI-1）です。\n先ほどのAI-2の意見に対して、論理と証拠に基づき再反論してください。\n感情に流されず、専門家としての冷静な視点から答えてください（100文字以内）。\n議題：「${topic}」\nAI-2の意見：「${latestAi2}」`;
-      ai1 = (await generateGeminiResponse(prompt)).trim();
-      ai1History.push(ai1);
-      await typeText(ai1, "🧠 AI-1（再反論）：");
-    } else {
-      // AI-2応酬
-      const latestAi1 = ai1History[ai1History.length - 1];
-      const prompt = `あなたはAI討論アプリの反対役（AI-2）です。\nAI-1の再反論に対し、哲学的観点から再度反論を試みてください。\n真理への問いかけを忘れず、論理の深さを意識しながら語ってください（100文字以内）。\n議題：「${topic}」\nAI-1の意見：「${latestAi1}」`;
-      ai2 = (await generateGeminiResponse(prompt)).trim();
-      ai2History.push(ai2);
-      await typeText(ai2, "⚖️ AI-2（再反論）：");
     }
-  }
 
-  // 最終意見（要約＋追加意見）各200文字以内
-  const summary1 = ai1History.join(" / ");
-  let finalAI1 = (
-    await generateGeminiResponse(
-      `あなたはAI討論アプリの肯定役（AI-1）です。以下はこれまでの自分の意見の流れです：「${summary1}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
-    )
-  )
-    .trim();
-  await typeText(finalAI1, "🧠 AI-1（最終意見）：");
+    const summary1 = ai1History.join(" / ");
+    let finalAI1 = (
+      await generateGeminiResponse(
+        `あなたはAI討論アプリの肯定役（AI-1）です。以下はこれまでの自分の意見の流れです：「${summary1}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
+      )
+    ).trim();
+    await typeText(finalAI1, "🧠 AI-1（最終意見）：");
 
-  const summary2 = ai2History.join(" / ");
-  let finalAI2 = (
-    await generateGeminiResponse(
-      `あなたはAI討論アプリの反対役（AI-2）です。以下はこれまでの自分の意見の流れです：「${summary2}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
-    )
-  )
-    .trim();
-  await typeText(finalAI2, "⚖️ AI-2（最終意見）：");
+    const summary2 = ai2History.join(" / ");
+    let finalAI2 = (
+      await generateGeminiResponse(
+        `あなたはAI討論アプリの反対役（AI-2）です。以下はこれまでの自分の意見の流れです：「${summary2}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
+      )
+    ).trim();
+    await typeText(finalAI2, "⚖️ AI-2（最終意見）：");
 
-  // 判定 AI-3
-  const promptJudge = `あなたはAI討論アプリの判定役（AI-3）です。
+    const promptJudge = `あなたはAI討論アプリの判定役（AI-3）です。
 あなたは中立で公正な審査官として、議論全体を俯瞰し、どちらの主張がより説得力があったかを評価します。
 
 まず、1〜5の数字だけを出力してください：
@@ -154,60 +143,43 @@ const handleStartDebate = async () => {
 AI-1の意見：「${ai1History[ai1History.length - 1]}」
 AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
 
-  const aiJudge = await generateGeminiResponse(promptJudge);
+    const aiJudge = await generateGeminiResponse(promptJudge);
+    const scoreMatch = aiJudge.match(/スコア[:：]\s*([1-5])/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : 3;
+    const explanationMatch = aiJudge.match(/説明[:：]\s*([\s\S]+)/);
+    const aiJudgeText = explanationMatch ? explanationMatch[1].trim() : "";
+    await typeText(aiJudgeText, "🧩 AI-3（判定）：");
 
-  // スコア抽出
-  const scoreMatch = aiJudge.match(/スコア[:：]\s*([1-5])/);
-  const score = scoreMatch ? parseInt(scoreMatch[1]) : 3;
+    const winnerMap = {
+      1: "AI-1（賛成）の意見に賛成",
+      2: "AI-1（賛成）の意見にやや賛成",
+      3: "判定不能（引き分け）",
+      4: "AI-2（反対）の意見にやや賛成",
+      5: "AI-2（反対）の意見に賛成"
+    };
+    setFinalDecision(`🏁 結論：${winnerMap[score] || "判定不能"}`);
 
-  // 説明抽出
-  const explanationMatch = aiJudge.match(/説明[:：]\s*([\s\S]+)/);
-  const aiJudgeText = explanationMatch ? explanationMatch[1].trim() : "";
+    const newLog = {
+      id: crypto.randomUUID(),
+      topic,
+      tags: [],
+      log: logRef.current,
+      winner,
+      comment: "",
+      timestamp: new Date().toISOString(),
+      ai1PersonaKey: ai1Persona,
+      ai2PersonaKey: ai2Persona,
+      ai1PersonaLabel: AI1_CHARACTERS[ai1Persona].label,
+      ai2PersonaLabel: AI2_CHARACTERS[ai2Persona].label,
+    };
 
-  await typeText(aiJudgeText, "🧩 AI-3（判定）：");
-
-  // 結論決定
-  let winner;
-  switch (score) {
-    case 1:
-      winner = "AI-1（賛成）の意見に賛成";
-      break;
-    case 2:
-      winner = "AI-1（賛成）の意見にやや賛成";
-      break;
-    case 3:
-      winner = "判定不能（引き分け）";
-      break;
-    case 4:
-      winner = "AI-2（反対）の意見にやや賛成";
-      break;
-    case 5:
-      winner = "AI-2（反対）の意見に賛成";
-      break;
-    default:
-      winner = "判定不能";
-  }
-  setFinalDecision(`🏁 結論：${winner}`);
-
-  // ログ保存
-  const newLog = {
-    id: crypto.randomUUID(),
-    topic,
-    tags: [],
-    log: logRef.current,
-    winner,
-    comment: "",
-    timestamp: new Date().toISOString(),
+    const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
+    logs.push(newLog);
+    localStorage.setItem("triqLogs", JSON.stringify(logs));
+    setSavedLogs(logs);
+    setTopic("");
+    setIsDebating(false);
   };
-
-  const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
-  logs.push(newLog);
-  localStorage.setItem("triqLogs", JSON.stringify(logs));
-  setSavedLogs(logs);
-
-  setTopic("");
-  setIsDebating(false);
-};
 
 
   return (
@@ -259,6 +231,115 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
         />
+
+      {/* AI キャラ選択 UI（スライダー形式） */}
+<div className="mb-8">
+  <div className="text-white font-semibold mb-2">AI-1（賛成役）を選ぶ</div>
+  <div
+    className="overflow-x-auto flex gap-4 py-2 scrollbar-hide"
+    style={{ scrollSnapType: "x mandatory" }}
+  >
+    {Object.entries(AI1_CHARACTERS).map(([key, char]) => {
+      const selected = ai1Persona === key;
+      return (
+        <div
+          key={key}
+          onClick={() => setAi1Persona(key)}
+          className={`min-w-[140px] flex-shrink-0 rounded-xl border transition cursor-pointer relative
+            ${
+              selected
+                ? "border-indigo-500 scale-105 shadow-xl bg-gradient-to-b from-indigo-900 to-gray-800"
+                : "border-gray-700 bg-gray-800"
+            }
+            hover:shadow-lg hover:scale-105 duration-200`}
+          style={{ scrollSnapAlign: "start" }}
+          tabIndex={0} // キーボード操作対応（必要なら）
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setAi1Persona(key);
+          }}
+        >
+          <img
+            src={char.image}
+            alt={char.label}
+            className="w-full h-28 object-cover rounded-t-xl"
+          />
+          <div className="p-2 text-center text-sm font-semibold text-white">
+            {char.label}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+
+  {ai1Persona && (
+    <div className="mt-4 p-4 rounded-xl bg-gray-800 border border-indigo-700 shadow-inner">
+      <h3 className="text-lg font-bold text-indigo-300">
+        {AI1_CHARACTERS[ai1Persona].label}
+      </h3>
+      <p className="text-sm text-gray-300 mt-1">
+        {AI1_CHARACTERS[ai1Persona].description}
+      </p>
+      <p className="text-xs italic text-gray-400 mt-2">
+        例：{AI1_CHARACTERS[ai1Persona].preview}
+      </p>
+    </div>
+  )}
+</div>
+
+{/* AI-2 キャラ選択 UI */}
+<div className="mb-8">
+  <div className="text-white font-semibold mb-2">AI-2（反対役）を選ぶ</div>
+  <div
+    className="overflow-x-auto flex gap-4 py-2 scrollbar-hide"
+    style={{ scrollSnapType: "x mandatory" }}
+  >
+    {Object.entries(AI2_CHARACTERS).map(([key, char]) => {
+      const selected = ai2Persona === key;
+      return (
+        <div
+          key={key}
+          onClick={() => setAi2Persona(key)}
+          className={`min-w-[140px] flex-shrink-0 rounded-xl border transition cursor-pointer relative
+            ${
+              selected
+                ? "border-indigo-500 scale-105 shadow-xl bg-gradient-to-b from-indigo-900 to-gray-800"
+                : "border-gray-700 bg-gray-800"
+            }
+            hover:shadow-lg hover:scale-105 duration-200`}
+          style={{ scrollSnapAlign: "start" }}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setAi2Persona(key);
+          }}
+        >
+          <img
+            src={char.image}
+            alt={char.label}
+            className="w-full h-28 object-cover rounded-t-xl"
+          />
+          <div className="p-2 text-center text-sm font-semibold text-white">
+            {char.label}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+
+  {ai2Persona && (
+    <div className="mt-4 p-4 rounded-xl bg-gray-800 border border-indigo-700 shadow-inner">
+      <h3 className="text-lg font-bold text-indigo-300">
+        {AI2_CHARACTERS[ai2Persona].label}
+      </h3>
+      <p className="text-sm text-gray-300 mt-1">
+        {AI2_CHARACTERS[ai2Persona].description}
+      </p>
+      <p className="text-xs italic text-gray-400 mt-2">
+        例：{AI2_CHARACTERS[ai2Persona].preview}
+      </p>
+    </div>
+  )}
+</div>
+
         {/* 応酬回数セレクト UI */}
   <div className="mb-4">
     <label className="block text-sm text-gray-300 mb-1">応酬回数</label>

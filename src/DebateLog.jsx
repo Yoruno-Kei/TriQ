@@ -26,7 +26,7 @@ export default function DebateLog({ log, typingLog }) {
     const isFinal1 = entry.startsWith("🧠 AI-1（最終意見）：");
     const isFinal2 = entry.startsWith("⚖️ AI-2（最終意見）：");
 
-    const cleanEntry = entry.replace(/^🧠 .*?：|^⚖️ .*?：|^🧩 /, "");
+    const cleanEntry = entry.replace(/^🧠 .*?：|^⚖️ .*?：|^🧩 .*?： /, "");
 
     return (
       <motion.div
