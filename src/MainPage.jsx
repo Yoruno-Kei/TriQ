@@ -24,6 +24,8 @@ export default function MainPage() {
   const [ai2Persona, setAi2Persona] = useState("philosopher");
 
   const logRef = useRef([]);
+  const ai1ScrollRef = useRef(null);
+  const ai2ScrollRef = useRef(null);
 
   const navigate = useNavigate();
 
@@ -45,6 +47,14 @@ export default function MainPage() {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const closeSidebar = () => setSidebarOpen(false);
+
+  const handleScrollKey = (e, ref) => {
+    if (e.key === "ArrowRight") {
+      ref.current.scrollBy({ left: 150, behavior: "smooth" });
+    } else if (e.key === "ArrowLeft") {
+      ref.current.scrollBy({ left: -150, behavior: "smooth" });
+    }
+  };
 
   const typeText = (text, prefix = "", delay = 20) => {
     return new Promise((resolve) => {
@@ -236,6 +246,9 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
 <div className="mb-8">
   <div className="text-white font-semibold mb-2">AI-1（賛成役）を選ぶ</div>
   <div
+    ref={ai1ScrollRef}
+    tabIndex={0}
+    onKeyDown={(e) => handleScrollKey(e, ai1ScrollRef)}
     className="overflow-x-auto flex gap-4 py-2 px-4 scrollbar-hide"
     style={{ scrollSnapType: "x mandatory" }}
   >
@@ -270,7 +283,7 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
       );
     })}
     {/* 右端のスペースを確保 */}
-    <div className="min-w-[16px] flex-shrink-0" />
+    <div className="min-w-[190px] flex-shrink-0" />
   </div>
 
   {ai1Persona && (
@@ -292,6 +305,9 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
 <div className="mb-8">
   <div className="text-white font-semibold mb-2">AI-2（反対役）を選ぶ</div>
   <div
+    ref={ai2ScrollRef}
+    tabIndex={0}
+    onKeyDown={(e) => handleScrollKey(e, ai2ScrollRef)}
     className="overflow-x-auto flex gap-4 py-2 px-4 scrollbar-hide"
     style={{ scrollSnapType: "x mandatory" }}
   >
@@ -326,7 +342,7 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
       );
     })}
     {/* 右端のスペースを確保 */}
-    <div className="min-w-[16px] flex-shrink-0" />
+    <div className="min-w-[190px] flex-shrink-0" />
   </div>
 
   {ai2Persona && (
