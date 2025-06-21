@@ -22,8 +22,8 @@ export default function MainPage() {
   const [isDebating, setIsDebating] = useState(false);
   const [selectedTag, setSelectedTag] = useState("");
   const [showMoreTurns, setShowMoreTurns] = useState(false);
-  const [ai1Persona, setAi1Persona] = useState("scientist");
-  const [ai2Persona, setAi2Persona] = useState("philosopher");
+  const [ai1Persona, setAi1Persona] = useState("AIagree");
+  const [ai2Persona, setAi2Persona] = useState("AIoppose");
 
   const logRef = useRef([]);
   const ai1ScrollRef = useRef(null);
