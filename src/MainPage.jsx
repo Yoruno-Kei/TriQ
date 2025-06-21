@@ -236,7 +236,7 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
 <div className="mb-8">
   <div className="text-white font-semibold mb-2">AI-1（賛成役）を選ぶ</div>
   <div
-    className="overflow-x-auto flex gap-4 py-2 scrollbar-hide"
+    className="overflow-x-auto flex gap-4 py-2 px-4 scrollbar-hide"
     style={{ scrollSnapType: "x mandatory" }}
   >
     {Object.entries(AI1_CHARACTERS).map(([key, char]) => {
@@ -253,7 +253,7 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
             }
             hover:shadow-lg hover:scale-105 duration-200`}
           style={{ scrollSnapAlign: "start" }}
-          tabIndex={0} // キーボード操作対応（必要なら）
+          tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") setAi1Persona(key);
           }}
@@ -269,6 +269,8 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
         </div>
       );
     })}
+    {/* 右端のスペースを確保 */}
+    <div className="min-w-[16px] flex-shrink-0" />
   </div>
 
   {ai1Persona && (
@@ -290,7 +292,7 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
 <div className="mb-8">
   <div className="text-white font-semibold mb-2">AI-2（反対役）を選ぶ</div>
   <div
-    className="overflow-x-auto flex gap-4 py-2 scrollbar-hide"
+    className="overflow-x-auto flex gap-4 py-2 px-4 scrollbar-hide"
     style={{ scrollSnapType: "x mandatory" }}
   >
     {Object.entries(AI2_CHARACTERS).map(([key, char]) => {
@@ -323,6 +325,8 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
         </div>
       );
     })}
+    {/* 右端のスペースを確保 */}
+    <div className="min-w-[16px] flex-shrink-0" />
   </div>
 
   {ai2Persona && (
