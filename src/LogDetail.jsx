@@ -72,10 +72,11 @@ export default function LogDetail() {
   };
 
   const handleTagInputKeyDown = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === " " || e.key === "Spacebar") {
       e.preventDefault();
-      if (newTagInput.startsWith("#")) {
-        addTag(newTagInput);
+      const trimmed = newTagInput.trim();
+      if (trimmed.startsWith("#") && trimmed.length > 1) {
+        addTag(trimmed);
         setNewTagInput("");
       }
     }
@@ -173,7 +174,7 @@ export default function LogDetail() {
 
         {!isShared && (
           <section>
-            <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ追加 (#付きで入力してEnter)</h2>
+            <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ追加 (#付きで入力してSpace)</h2>
             <input
               type="text"
               value={newTagInput}
