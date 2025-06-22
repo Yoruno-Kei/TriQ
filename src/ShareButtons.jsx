@@ -29,6 +29,25 @@ export default function ShareButtons({ logData, title }) {
     storeAndGenerateUrl();
   }, [logData]);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    // クリーンアップ
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
