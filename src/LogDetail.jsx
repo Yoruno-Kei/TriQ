@@ -178,13 +178,13 @@ export default function LogDetail() {
 
         {!isShared && (
           <section>
-            <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ追加 (#付きで入力してSpace)</h2>
+            <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ追加</h2>
             <input
               type="text"
               value={newTagInput}
               onChange={(e) => setNewTagInput(e.target.value)}
               onKeyDown={handleTagInputKeyDown}
-              placeholder="#タグを入力してEnter"
+              placeholder="#タグを入力してSpace"
               className="w-full p-2 rounded bg-gray-800 border border-indigo-600 text-white placeholder-gray-400"
             />
           </section>
