@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
+import ShareButtons from "./ShareButtons";
 
 export default function LogDetail() {
   const { id } = useParams();
@@ -112,7 +113,6 @@ export default function LogDetail() {
     );
   }
 
-  // 発言種別の判定関数などは元のままでOK
   const getPhase = (line) => {
     if (
       line.startsWith("🧠 AI-1（最終意見）：") ||
@@ -175,37 +175,37 @@ export default function LogDetail() {
   const renderBubble = (line, idx) => {
     const speaker = getSpeaker(line);
     const clean = line.replace(
-      /^🧠 AI-1（最終意見）：|^🧠 |^⚖️ AI-2（最終意見）：|^⚖️ |^🧩 /,
+      /^🧠 AI-1（最終意見）：|^🧠 AI-1（賛成）：|^🧠 .*?：|^⚖️ AI-2（最終意見）：|^⚖️ AI-2（反対）：|^⚖️ .*?：|^🧩 .*?：/, 
       ""
     );
 
     const baseClasses =
-      "max-w-[90%] p-5 rounded-xl shadow-md mb-4 whitespace-pre-wrap break-words";
-    let bubbleClass = "";
-    let containerClass = "flex ";
-    let label = "";
+    "max-w-[90%] p-6 rounded-2xl shadow-xl whitespace-pre-wrap font-sans text-base sm:text-lg leading-relaxed mb-4";
+  let bubbleClass = "";
+  let containerClass = "flex ";
+  let label = "";
 
-    switch (speaker) {
-      case "ai1":
-        bubbleClass = "bg-blue-100 text-gray-900 border border-blue-300";
-        containerClass += "justify-start";
-        label = "🧠 AI-1（賛成）";
-        break;
-      case "ai2":
-        bubbleClass = "bg-red-100 text-gray-900 border border-red-300";
-        containerClass += "justify-end";
-        label = "⚖️ AI-2（反対）";
-        break;
-      case "judge":
-        bubbleClass = "bg-green-100 text-gray-900 border border-green-300";
-        containerClass += "justify-center";
-        label = "🧩 AI-3（判定）";
-        break;
-      default:
-        bubbleClass = "bg-gray-200 text-gray-900 border border-gray-300";
-        containerClass += "justify-start";
-        label = "AI";
-    }
+  switch (speaker) {
+    case "ai1":
+      bubbleClass = "bg-gradient-to-br from-blue-200 to-white border-l-4 border-blue-500 text-gray-900 text-left";
+      containerClass += " justify-start";
+      label = "🧠 AI-1（賛成）";
+      break;
+    case "ai2":
+      bubbleClass = "bg-gradient-to-bl from-red-200 to-white border-r-4 border-red-500 text-gray-900 text-left";
+      containerClass += " justify-end";
+      label = "⚖️ AI-2（反対）";
+      break;
+    case "judge":
+      bubbleClass = "bg-gradient-to-b from-green-100 to-white border-t-4 border-green-500 text-gray-900 text-center";
+      containerClass += " justify-center";
+      label = "🧩 AI-3（判定）";
+      break;
+    default:
+      bubbleClass = "bg-gray-200 text-gray-900 border border-gray-300";
+      containerClass += " justify-start";
+      label = "AI";
+  }
 
     return (
       <div key={idx} className={containerClass}>
@@ -219,12 +219,18 @@ export default function LogDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white p-6 pb-24 font-sans relative">
-      <button
-        onClick={handleBack}
-        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold z-50"
-      >
-        ← 戻る
-      </button>
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-50">
+  <button
+    onClick={handleBack}
+    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold"
+  >
+    ← 戻る
+  </button>
+  <ShareButtons
+    url={window.location.href}
+    title={`TriQ議論：「${entryState.topic}」`}
+  />
+</div>
 
       <div className="max-w-3xl mx-auto space-y-8">
         <section>

@@ -26,48 +26,55 @@ export default function DebateLog({ log, typingLog }) {
     const isFinal1 = entry.startsWith("🧠 AI-1（最終意見）：");
     const isFinal2 = entry.startsWith("⚖️ AI-2（最終意見）：");
 
-    const cleanEntry = entry.replace(/^🧠 .*?：|^⚖️ .*?：|^🧩 .*?： /, "");
+    const cleanEntry = entry.replace(
+    /^🧠 AI-1（最終意見）：|^🧠 AI-1（賛成）：|^🧠 .*?：|^⚖️ AI-2（最終意見）：|^⚖️ AI-2（反対）：|^⚖️ .*?：|^🧩 .*?：/, 
+    ""
+  );
 
-    return (
-      <motion.div
-        key={idx}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className={`relative p-6 rounded-2xl shadow-xl whitespace-pre-wrap font-sans text-base sm:text-lg leading-relaxed
-  ${
-    isAI1
-      ? "bg-gradient-to-br from-blue-200 to-white border-l-4 border-blue-500 text-gray-900 text-left"
-      : ""
+    const baseClasses =
+    "max-w-[90%] p-6 rounded-2xl shadow-xl whitespace-pre-wrap font-sans text-base sm:text-lg leading-relaxed";
+
+  let containerClass = "flex ";
+  let bubbleClass = "";
+  let label = "";
+
+  if (isAI1) {
+    containerClass += "justify-start";
+    bubbleClass =
+      "bg-gradient-to-br from-blue-200 to-white border-l-4 border-blue-500 text-gray-900 text-left";
+    label = isFinal1 ? "🧠 AI-1（最終意見）" : "🧠 AI-1（賛成）";
+  } else if (isAI2) {
+    containerClass += "justify-end";
+    bubbleClass =
+      "bg-gradient-to-bl from-red-200 to-white border-r-4 border-red-500 text-gray-900 text-left";
+    label = isFinal2 ? "⚖️ AI-2（最終意見）" : "⚖️ AI-2（反対）";
+  } else if (isAI3) {
+    containerClass += "justify-center";
+    bubbleClass =
+      "bg-gradient-to-b from-green-100 to-white border-t-4 border-green-500 text-gray-900 text-center";
+    label = "🧩 AI-3（判定）";
+  } else {
+    containerClass += "justify-start";
+    bubbleClass = "bg-gray-200 text-gray-900 border border-gray-300";
+    label = "AI";
   }
-  ${
-    isAI2
-      ? "bg-gradient-to-bl from-red-200 to-white border-r-4 border-red-500 text-gray-900 text-left"
-      : ""
-  }
-  ${
-    isAI3
-      ? "bg-gradient-to-b from-green-100 to-white border-t-4 border-green-500 text-gray-900 text-center"
-      : ""
-  }
-`}
-      >
-        <div className="text-sm sm:text-base font-semibold opacity-70 mb-1">
-          {isFinal1
-            ? "🧠 AI-1（最終意見）"
-            : isFinal2
-            ? "⚖️ AI-2（最終意見）"
-            : isAI1
-            ? "🧠 AI-1（賛成）"
-            : isAI2
-            ? "⚖️ AI-2（反対）"
-            : isAI3
-            ? "🧩 AI-3（判定）"
-            : ""}
+
+  return (
+    <motion.div
+      key={idx}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className={`${containerClass} mb-4`}
+    >
+      <div className={`${bubbleClass} ${baseClasses}`}>
+        <div className="text-sm sm:text-base font-semibold opacity-70 mb-1 select-none">
+          {label}
         </div>
-        <div className="mt-1 text-base sm:text-lg">{cleanEntry}</div>
-      </motion.div>
-    );
+        <div>{cleanEntry}</div>
+      </div>
+    </motion.div>
+  );
   };
 
   return (
