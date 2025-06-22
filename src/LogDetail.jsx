@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { decompressFromEncodedURIComponent } from "lz-string";
 import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
 import ShareButtons from "./ShareButtons";
 import { LogBubble, getPhase } from "./LogBubbles";
+import { getLogFromFirestore } from "./firestoreUtils";
 
 
 export default function LogDetail() {
@@ -15,31 +15,33 @@ export default function LogDetail() {
   const [newTagInput, setNewTagInput] = useState("");
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const dataParam = searchParams.get("data");
-    let foundLog = null;
+    const fetchData = async () => {
+      if (!id) return;
 
-  if (dataParam) {
-      try {
-        const decoded = JSON.parse(decompressFromEncodedURIComponent(dataParam));
-        if (decoded && decoded.topic && decoded.timestamp) {
-          foundLog = decoded;
-          setIsShared(true);
-          setEntryState(foundLog);
-          setComment(decoded.comment || "");
-          return;
+      // Firestore形式IDは短い（例: 20文字以下）
+      if (id.length <= 20) {
+        try {
+          const doc = await getLogFromFirestore(id);
+          if (doc) {
+            setIsShared(true);
+            setEntryState(doc);
+            setComment(doc.comment || "");
+            return;
+          }
+        } catch (e) {
+          console.error("Firestoreログ取得失敗:", e);
         }
-      } catch (e) {
-        console.error("共有URLの復元失敗:", e);
       }
-    }
 
-    // ローカル検索にフォールバック
-    const saved = JSON.parse(localStorage.getItem("triqLogs") || "[]");
-    foundLog = saved.find((log) => log.id === id);
-    setIsShared(false);
-    setEntryState(foundLog);
-    setComment(foundLog?.comment || "");
+      // ローカル保存はUUIDの長いID
+      const saved = JSON.parse(localStorage.getItem("triqLogs") || "[]");
+      const found = saved.find((log) => log.id === id);
+      setIsShared(false);
+      setEntryState(found);
+      setComment(found?.comment || "");
+    };
+
+    fetchData();
   }, [id]);
 
   const saveEntry = (newEntry) => {

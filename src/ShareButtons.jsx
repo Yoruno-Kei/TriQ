@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { compressToEncodedURIComponent } from "lz-string";
 import {
   FacebookShareButton,
   TwitterShareButton,
@@ -8,32 +7,27 @@ import {
   TwitterIcon,
   LineIcon,
 } from "react-share";
+import { saveLogToFirestore } from "./firebase";
 
-export default function ShareButtons({ logData, fallbackUrl, title }) {
+export default function ShareButtons({ logData, title }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const menuRef = useRef(null);
 
   useEffect(() => {
-  const generateUrl = () => {
-    if (!logData) return fallbackUrl || window.location.href;
-
-    const json = JSON.stringify(logData);
-    const compressed = compressToEncodedURIComponent(json);
-
-    if (logData.id) {
-      // IDがある場合はパスに含める
-      return `${window.location.origin}/TriQ/log/${logData.id}?data=${compressed}`;
-    } else {
-      // IDなしはクエリのみ
-      return `${window.location.origin}/TriQ/log?data=${compressed}`;
-    }
-  };
-
-  setShareUrl(generateUrl());
-}, [logData, fallbackUrl]);
-
+    const storeAndGenerateUrl = async () => {
+      if (!logData) return;
+      try {
+        const id = await saveLogToFirestore(logData);
+        const url = `${window.location.origin}/TriQ/log/${id}`;
+        setShareUrl(url);
+      } catch (e) {
+        console.error("Firestore共有失敗:", e);
+      }
+    };
+    storeAndGenerateUrl();
+  }, [logData]);
 
   const handleCopy = async () => {
     try {
@@ -45,16 +39,6 @@ export default function ShareButtons({ logData, fallbackUrl, title }) {
     }
   };
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   return (
     <div ref={menuRef} className="relative inline-block text-left z-50">
       <button
@@ -64,7 +48,7 @@ export default function ShareButtons({ logData, fallbackUrl, title }) {
         共有
       </button>
 
-      {open && (
+      {open && shareUrl && (
         <div className="absolute bottom-full right-0 mb-2 w-56 bg-white p-4 rounded shadow-lg flex flex-col gap-3 z-50">
           <FacebookShareButton url={shareUrl} quote={title}>
             <div className="flex items-center gap-2">
@@ -94,9 +78,7 @@ export default function ShareButtons({ logData, fallbackUrl, title }) {
             📋 URLをコピー
           </button>
 
-          {copied && (
-            <div className="text-green-600 text-xs mt-1">✅ コピーしました！</div>
-          )}
+          {copied && <div className="text-green-600 text-xs mt-1">✅ コピーしました！</div>}
         </div>
       )}
     </div>
