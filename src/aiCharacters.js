@@ -275,7 +275,7 @@ export const AI2_CHARACTERS = {
 },
   
   sharpLady: {
-  label: "ツンデレな短気女子",
+  label: "ツンデレ短気な女子",
   description: "短気で感情的だけど、ちゃんと理論的に反論もできるツンデレな女性。",
   preview: "もう、なんでそんなバカなこと言うのよ！",
   image: "/TriQ/images/ai2_sharpLady.jpg",
@@ -287,7 +287,7 @@ export const AI2_CHARACTERS = {
 },
   
   sweetGirl: {
-  label: "甘えん坊でしっかり者な妹",
+  label: "甘えん坊な妹",
   description: "甘えた口調だけど、芯は強くしっかり者の妹キャラ。",
   preview: "えぇ〜…でもそれって、ちょっと違うんじゃないかなぁ？",
   image: "/TriQ/images/ai2_sweetGirl.jpg",
