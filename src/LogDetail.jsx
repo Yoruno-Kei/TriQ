@@ -157,8 +157,9 @@ export default function LogDetail() {
         </section>
 
         {entryState.tags?.length > 0 && (
-          <section>
-            <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ</h2>
+        <section>
+          <h2 className="text-xl font-semibold text-indigo-300 mb-2">タグ</h2>
+          {entryState.tags?.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {entryState.tags.map((tag, idx) => (
                 <span key={idx} className="inline-flex items-center bg-indigo-700 text-white px-3 py-1 rounded-full text-sm font-medium select-none">
@@ -169,7 +170,10 @@ export default function LogDetail() {
                 </span>
               ))}
             </div>
-          </section>
+          ) : (
+            <div className="text-gray-500 text-sm">タグなし</div>
+          )}
+        </section>
         )}
 
         {!isShared && (
@@ -187,15 +191,19 @@ export default function LogDetail() {
         )}
 
         <section>
-          <h2 className="text-2xl font-semibold text-indigo-200 mb-4">コメント・メモ</h2>
+        {isShared ? (
+          <div className="p-4 bg-gray-900 text-white border border-gray-800 rounded-lg text-base whitespace-pre-wrap">
+            {comment.trim() ? comment : <span className="text-gray-500">コメントなし</span>}
+          </div>
+        ) : (
           <textarea
             rows={4}
             value={comment}
             onChange={handleCommentChange}
             placeholder="ここにメモを入力"
             className="w-full p-4 rounded-lg bg-gray-800 border border-gray-700 text-white"
-            readOnly={isShared}
           />
+        )}
         </section>
 
         {exchangeLogs.length > 0 && (
