@@ -1,4 +1,4 @@
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "./firebase"; 
 
 // ログをFirestoreの triqLogs コレクションに保存する関数
