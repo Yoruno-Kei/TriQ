@@ -7,7 +7,7 @@ import {
   TwitterIcon,
   LineIcon,
 } from "react-share";
-import { saveLogToFirestore } from "./firebase";
+import { saveLogToFirestore } from "./firestoreUtils";
 
 export default function ShareButtons({ logData, title }) {
   const [open, setOpen] = useState(false);
