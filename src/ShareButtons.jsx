@@ -13,13 +13,15 @@ export default function ShareButtons({ logData, title }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
+  const [docId, setDocId] = useState(null);
   const menuRef = useRef(null);
 
   useEffect(() => {
     const storeAndGenerateUrl = async () => {
       if (!logData) return;
       try {
-        const id = await saveLogToFirestore(logData);
+        const id = await saveLogToFirestore(logData, docId); // 第二引数で既存IDを渡す
+        setDocId(id); // IDを保存しておく
         const url = `${window.location.origin}/TriQ/log/${id}`;
         setShareUrl(url);
       } catch (e) {

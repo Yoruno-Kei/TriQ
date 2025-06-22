@@ -1,11 +1,16 @@
-import { doc, getDoc, collection, addDoc } from "firebase/firestore";
+import { doc, getDoc, collection, setDoc, addDoc } from "firebase/firestore";
 import { db } from "./firebase"; 
 
 // ログをFirestoreの triqLogs コレクションに保存する関数
-export async function saveLogToFirestore(logData) {
-  if (!logData) throw new Error("logData is required");
-  const docRef = await addDoc(collection(db, "triqLogs"), logData);
-  return docRef.id;
+export async function saveLogToFirestore(logData, existingId) {
+  if (existingId) {
+    const docRef = doc(db, "triqLogs", existingId);
+    await setDoc(docRef, logData, { merge: true });
+    return existingId;
+  } else {
+    const docRef = await addDoc(collection(db, "triqLogs"), logData);
+    return docRef.id;
+  }
 }
 
 export async function getLogFromFirestore(id) {
