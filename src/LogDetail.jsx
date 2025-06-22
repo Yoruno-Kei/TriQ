@@ -188,7 +188,6 @@ export default function LogDetail() {
               type="text"
               value={newTagInput}
               onChange={handleTagInputChange}
-              onKeyDown={handleTagInputKeyDown}
               placeholder="#タグを入力してSpace"
               className="w-full p-2 rounded bg-gray-800 border border-indigo-600 text-white placeholder-gray-400"
             />
