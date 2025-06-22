@@ -224,7 +224,7 @@ export default function LogDetail() {
     onClick={handleBack}
     className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold"
   >
-    ← 戻る
+    ホーム
   </button>
   <ShareButtons
     url={window.location.href}
