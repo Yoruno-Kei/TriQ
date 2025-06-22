@@ -191,6 +191,7 @@ export default function LogDetail() {
         )}
 
         <section>
+          <h2 className="text-2xl font-semibold text-indigo-200 mb-4">コメント</h2>
         {isShared ? (
           <div className="p-4 bg-gray-900 text-white border border-gray-800 rounded-lg text-base whitespace-pre-wrap">
             {comment.trim() ? comment : <span className="text-gray-500">コメントなし</span>}
@@ -200,7 +201,7 @@ export default function LogDetail() {
             rows={4}
             value={comment}
             onChange={handleCommentChange}
-            placeholder="ここにメモを入力"
+            placeholder="ここにコメントを入力"
             className="w-full p-4 rounded-lg bg-gray-800 border border-gray-700 text-white"
           />
         )}
