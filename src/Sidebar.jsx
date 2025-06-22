@@ -132,6 +132,7 @@ export default function Sidebar({
               )}
               <button
                 onClick={(e) => {
+                  console.log("Navigating to", `/log/${entry.id}`);
                   e.stopPropagation();
                   deleteLog(entry.id);
                 }}

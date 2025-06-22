@@ -1,5 +1,5 @@
-// ShareButtons.jsx
 import React, { useState, useRef, useEffect } from "react";
+import { compressToEncodedURIComponent } from "lz-string";
 import {
   FacebookShareButton,
   TwitterShareButton,
@@ -9,22 +9,42 @@ import {
   LineIcon,
 } from "react-share";
 
-export default function ShareButtons({ url, title }) {
+export default function ShareButtons({ logData, fallbackUrl, title }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const menuRef = useRef();
+  const [shareUrl, setShareUrl] = useState("");
+  const menuRef = useRef(null);
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("URLコピーに失敗しました:", err);
+  useEffect(() => {
+  const generateUrl = () => {
+    if (!logData) return fallbackUrl || window.location.href;
+
+    const json = JSON.stringify(logData);
+    const compressed = compressToEncodedURIComponent(json);
+
+    if (logData.id) {
+      // IDがある場合はパスに含める
+      return `${window.location.origin}/TriQ/log/${logData.id}?data=${compressed}`;
+    } else {
+      // IDなしはクエリのみ
+      return `${window.location.origin}/TriQ/log?data=${compressed}`;
     }
   };
 
-  // 外側クリックで閉じる
+  setShareUrl(generateUrl());
+}, [logData, fallbackUrl]);
+
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("URLコピー失敗:", err);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -36,31 +56,31 @@ export default function ShareButtons({ url, title }) {
   }, []);
 
   return (
-    <div ref={menuRef} className="relative inline-block text-left ml-3 z-50">
+    <div ref={menuRef} className="relative inline-block text-left z-50">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((prev) => !prev)}
         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold"
       >
         共有
       </button>
 
       {open && (
-        <div className="absolute bottom-full mb-2 right-0 bg-white p-4 rounded shadow-lg flex flex-col gap-3 w-56">
-          <FacebookShareButton url={url} quote={title}>
+        <div className="absolute bottom-full right-0 mb-2 w-56 bg-white p-4 rounded shadow-lg flex flex-col gap-3 z-50">
+          <FacebookShareButton url={shareUrl} quote={title}>
             <div className="flex items-center gap-2">
               <FacebookIcon size={32} round />
               <span className="text-sm text-gray-800 font-medium">Facebookで共有</span>
             </div>
           </FacebookShareButton>
 
-          <TwitterShareButton url={url} title={title}>
+          <TwitterShareButton url={shareUrl} title={title}>
             <div className="flex items-center gap-2">
               <TwitterIcon size={32} round />
               <span className="text-sm text-gray-800 font-medium">Twitterで共有</span>
             </div>
           </TwitterShareButton>
 
-          <LineShareButton url={url} title={title}>
+          <LineShareButton url={shareUrl} title={title}>
             <div className="flex items-center gap-2">
               <LineIcon size={32} round />
               <span className="text-sm text-gray-800 font-medium">LINEで共有</span>

@@ -114,7 +114,7 @@ export default function MainPage() {
     const summary1 = ai1History.join(" / ");
     let finalAI1 = (
       await generateGeminiResponse(
-        `あなたはAI討論アプリの肯定役（AI-1）です。以下はこれまでの自分の意見の流れです：「${summary1}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
+        `あなたはAI討論アプリの肯定役（AI-1）です。以下はこれまでの自分の意見の流れです：「${summary1}」\n${ai1Prompts.final}(200文字以内で)\n議題：「${topic}」`
       )
     ).trim();
     await typeText(finalAI1, "🧠 AI-1（最終意見）：");
@@ -122,7 +122,7 @@ export default function MainPage() {
     const summary2 = ai2History.join(" / ");
     let finalAI2 = (
       await generateGeminiResponse(
-        `あなたはAI討論アプリの反対役（AI-2）です。以下はこれまでの自分の意見の流れです：「${summary2}」\nこれらを要約し、最後に追加したい意見を含めて200文字以内で最終的な見解を述べてください。\n議題：「${topic}」`
+        `あなたはAI討論アプリの反対役（AI-2）です。以下はこれまでの自分の意見の流れです：「${summary2}」\n${ai2Prompts.final}(200文字以内で)\n議題：「${topic}」`
       )
     ).trim();
     await typeText(finalAI2, "⚖️ AI-2（最終意見）：");
