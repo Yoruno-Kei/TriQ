@@ -37,15 +37,10 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('firebase')) {
-              return 'vendor_firebase';  // firebase関連を分割
-            }
-            if (id.includes('react')) {
-              return 'vendor_react';     // react関連を分割
-            }
-            return 'vendor';             // その他のnode_modulesはvendorチャンクに
+            return 'vendor';
           }
         }
+
       }
     },
     chunkSizeWarningLimit: 1000 // 1MBに警告閾値を増やす（必要に応じて調整）
