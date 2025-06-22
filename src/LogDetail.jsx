@@ -71,21 +71,20 @@ export default function LogDetail() {
     });
   };
 
-  const handleTagInputChange = (e) => {
-    const value = e.target.value;
+const handleTagInputChange = (e) => {
+  const value = e.target.value;
 
-    if (/[ 　]$/.test(value)) { // 半角 or 全角スペース
-      const trimmed = value.slice(0, -1).trim();
-      if (trimmed.startsWith("#") && trimmed.length > 1) {
-        addTag(trimmed);
-        setNewTagInput("");
-      } else {
-        setNewTagInput(""); // 空なら消す
-      }
-    } else {
-      setNewTagInput(value);
+  // 最後の1文字が全角スペース or 半角スペース
+  if (value.endsWith(" ") || value.endsWith("　")) {
+    const trimmed = value.trim(); // 両端のスペース削除
+    if (trimmed.startsWith("#") && trimmed.length > 1) {
+      addTag(trimmed);
     }
-  };
+    setNewTagInput(""); // 入力欄をクリア
+  } else {
+    setNewTagInput(value);
+  }
+};
 
   const handleBack = () => navigate("/");
 
