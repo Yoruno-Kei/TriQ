@@ -71,14 +71,19 @@ export default function LogDetail() {
     });
   };
 
-  const handleTagInputKeyDown = (e) => {
-    if (e.key === " " || e.key === "Spacebar") {
-      e.preventDefault();
-      const trimmed = newTagInput.trim();
+  const handleTagInputChange = (e) => {
+    const value = e.target.value;
+
+    if (/[ 　]$/.test(value)) { // 半角 or 全角スペース
+      const trimmed = value.slice(0, -1).trim();
       if (trimmed.startsWith("#") && trimmed.length > 1) {
         addTag(trimmed);
         setNewTagInput("");
+      } else {
+        setNewTagInput(""); // 空なら消す
       }
+    } else {
+      setNewTagInput(value);
     }
   };
 
@@ -182,7 +187,7 @@ export default function LogDetail() {
             <input
               type="text"
               value={newTagInput}
-              onChange={(e) => setNewTagInput(e.target.value)}
+              onChange={handleTagInputChange}
               onKeyDown={handleTagInputKeyDown}
               placeholder="#タグを入力してSpace"
               className="w-full p-2 rounded bg-gray-800 border border-indigo-600 text-white placeholder-gray-400"
@@ -201,7 +206,7 @@ export default function LogDetail() {
             rows={4}
             value={comment}
             onChange={handleCommentChange}
-            placeholder="ここにコメントを入力"
+            placeholder="ここにコメントを入力(自動保存)"
             className="w-full p-4 rounded-lg bg-gray-800 border border-gray-700 text-white"
           />
         )}
