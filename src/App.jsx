@@ -15,7 +15,7 @@ function App() {
       className="w-10 h-10 sm:w-12 sm:h-12 rounded-md shadow-md"
     />
     <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg tracking-wide select-none">
-      TriQ
+      TriQ1
     </h1>
   </div>
   <p className="mt-1 text-sm sm:text-base text-indigo-200 font-light select-none">

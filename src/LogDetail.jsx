@@ -13,6 +13,8 @@ export default function LogDetail() {
   const [isShared, setIsShared] = useState(false);
   const [comment, setComment] = useState("");
   const [newTagInput, setNewTagInput] = useState("");
+  const [finalDecision, setFinalDecision] = useState("");
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,7 +44,14 @@ export default function LogDetail() {
     };
 
     fetchData();
+    
   }, [id]);
+
+  useEffect(() => {
+  if (entryState?.winner) {
+    setFinalDecision(`🏁 結論：${entryState.winner}`);
+  }
+}, [entryState]);
 
   const saveEntry = (newEntry) => {
     const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
@@ -129,6 +138,13 @@ const handleTagInputChange = (e) => {
             {entryState.topic}
           </div>
         </section>
+
+        {finalDecision && (
+          <div className="mt-3 max-w-md mx-auto rounded-lg bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-700 text-white p-3 shadow-lg text-center font-semibold text-lg sm:text-xl">
+            {finalDecision}
+          </div>
+        )}
+        
 
         <section className="mb-6">
           <h2 className="text-xl font-semibold text-indigo-300 mb-4">AIキャラ選択</h2>
