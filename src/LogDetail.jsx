@@ -14,6 +14,7 @@ export default function LogDetail() {
   const [comment, setComment] = useState("");
   const [newTagInput, setNewTagInput] = useState("");
   const [finalDecision, setFinalDecision] = useState("");
+  const [firestoreId, setFirestoreId] = useState(null);
 
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function LogDetail() {
             setIsShared(true);
             setEntryState(doc);
             setComment(doc.comment || "");
+            setFirestoreId(id);
             return;
           }
         } catch (e) {
@@ -124,11 +126,13 @@ const handleTagInputChange = (e) => {
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-50">
         <button onClick={handleBack} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold">ホーム</button>
         {!isShared && (
-          <ShareButtons
-            logData={entryState}
-            title={`TriQ議論：「${entryState.topic}」`}
-          />
-        )}
+      <ShareButtons
+        logData={entryState}
+        firestoreId={firestoreId}
+        onSaved={(newId) => setFirestoreId(newId)}  // 共有後にIDを更新
+        title={`TriQ議論：「${entryState.topic}」`}
+      />
+    )}
       </div>
 
       <div className="max-w-3xl mx-auto space-y-8">
@@ -150,31 +154,31 @@ const handleTagInputChange = (e) => {
           <h2 className="text-xl font-semibold text-indigo-300 mb-4">AIキャラ選択</h2>
           <div className="flex gap-6 flex-wrap justify-center">
             {["ai1PersonaKey", "ai2PersonaKey"].map((key, i) => {
-  const charKey = entryState[key];
-  const label = entryState[key.replace("Key", "Label")];
-  const ai = i === 0 ? "AI-1（賛成）" : "AI-2（反対）";
-  const colorClass = i === 0
-    ? "bg-blue-600 text-blue-100"
-    : "bg-red-600 text-red-100";
-  const image = (i === 0 ? AI1_CHARACTERS : AI2_CHARACTERS)[charKey]?.image;
+        const charKey = entryState[key];
+        const label = entryState[key.replace("Key", "Label")];
+        const ai = i === 0 ? "AI-1（賛成）" : "AI-2（反対）";
+        const colorClass = i === 0
+          ? "bg-blue-600 text-blue-100"
+          : "bg-red-600 text-red-100";
+        const image = (i === 0 ? AI1_CHARACTERS : AI2_CHARACTERS)[charKey]?.image;
 
-  return (
-    <div
-      key={i}
-      className={`p-4 rounded-xl flex-1 min-w-[160px] max-w-[240px] text-center shadow-lg ${colorClass}`}
-    >
-      <div className="text-white font-bold text-lg mb-2">{ai}</div>
-      {image && (
-        <img
-          src={image}
-          alt={label}
-          className="w-24 h-24 mx-auto rounded-full mb-2 object-cover border-2 border-white shadow-md"
-        />
-      )}
-      <div className="text-sm font-medium">{label || "不明"}</div>
-    </div>
-  );
-})}
+        return (
+          <div
+            key={i}
+            className={`p-4 rounded-xl flex-1 min-w-[160px] max-w-[240px] text-center shadow-lg ${colorClass}`}
+          >
+            <div className="text-white font-bold text-lg mb-2">{ai}</div>
+            {image && (
+              <img
+                src={image}
+                alt={label}
+                className="w-24 h-24 mx-auto rounded-full mb-2 object-cover border-2 border-white shadow-md"
+              />
+            )}
+            <div className="text-sm font-medium">{label || "不明"}</div>
+          </div>
+        );
+      })}
           </div>
         </section>
 

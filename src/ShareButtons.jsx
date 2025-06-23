@@ -1,35 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
-import {
-  FacebookShareButton,
-  TwitterShareButton,
-  LineShareButton,
-  FacebookIcon,
-  TwitterIcon,
-  LineIcon,
-} from "react-share";
-import { saveLogToFirestore } from "./firestoreUtils";
-
 export default function ShareButtons({ logData, title }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [docId, setDocId] = useState(null);
   const menuRef = useRef(null);
-
-  useEffect(() => {
-    const storeAndGenerateUrl = async () => {
-      if (!logData) return;
-      try {
-        const id = await saveLogToFirestore(logData, docId); // 第二引数で既存IDを渡す
-        setDocId(id); // IDを保存しておく
-        const url = `${window.location.origin}/TriQ/log/${id}`;
-        setShareUrl(url);
-      } catch (e) {
-        console.error("Firestore共有失敗:", e);
-      }
-    };
-    storeAndGenerateUrl();
-  }, [logData]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -44,7 +18,6 @@ export default function ShareButtons({ logData, title }) {
       document.removeEventListener("mousedown", handleClickOutside);
     }
 
-    // クリーンアップ
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -60,10 +33,24 @@ export default function ShareButtons({ logData, title }) {
     }
   };
 
+  const handleShareClick = async () => {
+    if (!logData) return;
+    try {
+      const id = await saveLogToFirestore(logData, docId);
+      setDocId(id);
+      const url = `${window.location.origin}/TriQ/log/${id}`;
+      setShareUrl(url);
+      setOpen(true);
+    } catch (e) {
+      console.error("Firestore共有失敗:", e);
+      alert("共有に失敗しました。もう一度お試しください。");
+    }
+  };
+
   return (
     <div ref={menuRef} className="relative inline-block text-left z-50">
       <button
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={handleShareClick}
         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-white font-semibold"
       >
         共有
