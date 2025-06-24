@@ -13,8 +13,8 @@ export function buildPrompt({
   p += `制限：${limit}文字以内\n`;
   p += `議題：「${topic}」\n`;
 
+  if (summary) p += `これまでの自分の意見要約：「${summary}」\n`;
   if (opponent) p += `直前の相手意見：「${opponent}」\n`;
-  if (type === "final" && summary) p += `要約：「${summary}」\n`;
 
   const actions = {
     intro: "初期意見を述べよ。",

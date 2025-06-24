@@ -86,14 +86,18 @@ export default function MainPage() {
     const ai1History = [];
     const ai2History = [];
 
+    const summary1 = ai1History.join(" / "); // AI-1の意見履歴
+    const summary2 = ai2History.join(" / "); // AI-2の意見履歴
+
     const ai1Intro = await generateGeminiResponseWithRetry(
       buildPrompt({
         role: "AI-1",
-        stance: "賛成",
+        stance: "議題に賛成",
         persona: ai1Prompts.personality,
         type: "intro",
         topic,
-        limit: "50"
+        limit: "100",
+        summary: summary1
       })
     );
 
@@ -103,12 +107,13 @@ export default function MainPage() {
     const ai2Intro = await generateGeminiResponseWithRetry(
       buildPrompt({
         role: "AI-2",
-        stance: "反対",
+        stance: "議題に反対",
         persona: ai2Prompts.personality,
         type: "intro",
         topic,
-        limit: "75",
-        opponent: ai1Intro.trim()
+        limit: "100",
+        opponent: ai1Intro.trim(),
+        summary: summary2
       })
     );
 
@@ -119,12 +124,13 @@ export default function MainPage() {
       if (i % 2 === 0) {
         const prompt = buildPrompt({
           role: "AI-1",
-          stance: "賛成",
+          stance: "議題に賛成",
           persona: ai1Prompts.personality,
           type: "rebuttal",
           topic,
-          limit: "75",
-          opponent: ai2History.at(-1)
+          limit: "100",
+          opponent: ai2History.at(-1),
+          summary: summary1
         });
         const response = await generateGeminiResponseWithRetry(prompt);
         ai1History.push(response.trim());
@@ -132,12 +138,13 @@ export default function MainPage() {
       } else {
         const prompt = buildPrompt({
           role: "AI-2",
-          stance: "反対",
+          stance: "議題に反対",
           persona: ai2Prompts.personality,
           type: "rebuttal",
           topic,
-          limit: "75",
-          opponent: ai1History.at(-1)
+          limit: "100",
+          opponent: ai1History.at(-1),
+          summary: summary2
         });
         const response = await generateGeminiResponseWithRetry(prompt);
         ai2History.push(response.trim());
@@ -149,12 +156,12 @@ export default function MainPage() {
       await generateGeminiResponseWithRetry(
         buildPrompt({
           role: "AI-1",
-          stance: "賛成",
+          stance: "議題に賛成",
           persona: ai1Prompts.personality,
           type: "final",
           topic,
-          limit: "100",
-          summary: ai1History.join(" / ")
+          limit: "150",
+          summary: summary1
         })
       )
     ).trim();
@@ -165,12 +172,12 @@ export default function MainPage() {
       await generateGeminiResponseWithRetry(
         buildPrompt({
           role: "AI-2",
-          stance: "反対",
+          stance: "議題に反対",
           persona: ai2Prompts.personality,
           type: "final",
           topic,
-          limit: "100",
-          summary: ai2History.join(" / ")
+          limit: "150",
+          summary: summary2
         })
       )
     ).trim();
