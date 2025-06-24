@@ -1,3 +1,14 @@
+import React, { useState, useRef, useEffect } from "react";
+import {
+  FacebookShareButton,
+  TwitterShareButton,
+  LineShareButton,
+  FacebookIcon,
+  TwitterIcon,
+  LineIcon,
+} from "react-share";
+import { saveLogToFirestore } from "./firestoreUtils";
+
 export default function ShareButtons({ logData, title }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -36,11 +47,19 @@ export default function ShareButtons({ logData, title }) {
   const handleShareClick = async () => {
     if (!logData) return;
     try {
-      const id = await saveLogToFirestore(logData, docId);
+      const id = await saveLogToFirestore(logData, logData.firestoreId);
       setDocId(id);
       const url = `${window.location.origin}/TriQ/log/${id}`;
       setShareUrl(url);
       setOpen(true);
+
+           // ローカル側にもFirestoreのIDを保存
+      const updatedLog = { ...logData, firestoreId: id };
+      const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
+      const updatedLogs = logs.map((log) =>
+        log.id === logData.id ? updatedLog : log
+      );
+      localStorage.setItem("triqLogs", JSON.stringify(updatedLogs));
     } catch (e) {
       console.error("Firestore共有失敗:", e);
       alert("共有に失敗しました。もう一度お試しください。");

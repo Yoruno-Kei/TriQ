@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef} from "react";
 import { useNavigate } from "react-router-dom";
-import { generateGeminiResponse } from "./gemini";
+import { generateGeminiResponseWithRetry } from "./geminiWithRetry";
 import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
 import { BookOpen, X } from "lucide-react";
 import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
 import CharacterSlider from "./CharacterSlider";
 import StartDebateButton from "./StartDebateButton";
+import { buildPrompt } from "./generatePrompt";
 
 export default function MainPage() {
   const [topic, setTopic] = useState("");
@@ -85,70 +86,119 @@ export default function MainPage() {
     const ai1History = [];
     const ai2History = [];
 
-    const ai1Intro = await generateGeminiResponse(
-      `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.intro}(100文字以内で)\n議題：「${topic}」`
+    const ai1Intro = await generateGeminiResponseWithRetry(
+      buildPrompt({
+        role: "AI-1",
+        stance: "賛成",
+        persona: ai1Prompts.personality,
+        type: "intro",
+        topic,
+        limit: "50"
+      })
     );
+
     ai1History.push(ai1Intro.trim());
     await typeText(ai1Intro.trim(), "🧠 AI-1（賛成）：");
 
-    const ai2Intro = await generateGeminiResponse(
-      `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.intro}(100文字以内で)\n議題：「${topic}」\nAI-1の意見：「${ai1Intro.trim()}」`
+    const ai2Intro = await generateGeminiResponseWithRetry(
+      buildPrompt({
+        role: "AI-2",
+        stance: "反対",
+        persona: ai2Prompts.personality,
+        type: "intro",
+        topic,
+        limit: "75",
+        opponent: ai1Intro.trim()
+      })
     );
+
     ai2History.push(ai2Intro.trim());
     await typeText(ai2Intro.trim(), "⚖️ AI-2（反対）：");
 
     for (let i = 0; i < turns - 2; i++) {
       if (i % 2 === 0) {
-        const prompt = `あなたはAI討論アプリの肯定役（AI-1）です。\n${ai1Prompts.rebuttal}(100文字以内で)\n議題：「${topic}」\nAI-2の意見：「${ai2History[ai2History.length - 1]}」`;
-        const response = await generateGeminiResponse(prompt);
+        const prompt = buildPrompt({
+          role: "AI-1",
+          stance: "賛成",
+          persona: ai1Prompts.personality,
+          type: "rebuttal",
+          topic,
+          limit: "75",
+          opponent: ai2History.at(-1)
+        });
+        const response = await generateGeminiResponseWithRetry(prompt);
         ai1History.push(response.trim());
         await typeText(response.trim(), "🧠 AI-1（再反論）：");
       } else {
-        const prompt = `あなたはAI討論アプリの反対役（AI-2）です。\n${ai2Prompts.rebuttal}(100文字以内で)\n議題：「${topic}」\nAI-1の意見：「${ai1History[ai1History.length - 1]}」`;
-        const response = await generateGeminiResponse(prompt);
+        const prompt = buildPrompt({
+          role: "AI-2",
+          stance: "反対",
+          persona: ai2Prompts.personality,
+          type: "rebuttal",
+          topic,
+          limit: "75",
+          opponent: ai1History.at(-1)
+        });
+        const response = await generateGeminiResponseWithRetry(prompt);
         ai2History.push(response.trim());
         await typeText(response.trim(), "⚖️ AI-2（再反論）：");
       }
     }
-
-    const summary1 = ai1History.join(" / ");
-    let finalAI1 = (
-      await generateGeminiResponse(
-        `あなたはAI討論アプリの肯定役（AI-1）です。以下はこれまでの自分の意見の流れです：「${summary1}」\n${ai1Prompts.final}(200文字以内で)\n議題：「${topic}」`
+  
+    const finalAI1 = (
+      await generateGeminiResponseWithRetry(
+        buildPrompt({
+          role: "AI-1",
+          stance: "賛成",
+          persona: ai1Prompts.personality,
+          type: "final",
+          topic,
+          limit: "100",
+          summary: ai1History.join(" / ")
+        })
       )
     ).trim();
+
     await typeText(finalAI1, "🧠 AI-1（最終意見）：");
 
-    const summary2 = ai2History.join(" / ");
-    let finalAI2 = (
-      await generateGeminiResponse(
-        `あなたはAI討論アプリの反対役（AI-2）です。以下はこれまでの自分の意見の流れです：「${summary2}」\n${ai2Prompts.final}(200文字以内で)\n議題：「${topic}」`
+    const finalAI2 = (
+      await generateGeminiResponseWithRetry(
+        buildPrompt({
+          role: "AI-2",
+          stance: "反対",
+          persona: ai2Prompts.personality,
+          type: "final",
+          topic,
+          limit: "100",
+          summary: ai2History.join(" / ")
+        })
       )
     ).trim();
+
     await typeText(finalAI2, "⚖️ AI-2（最終意見）：");
 
+    
     const promptJudge = `あなたはAI討論アプリの判定役（AI-3）です。
-あなたは中立で公正な審査官として、議論全体を俯瞰し、どちらの主張がより説得力があったかを評価します。
+      あなたは中立で公正な審査官として、議論全体を俯瞰し、どちらの主張がより説得力があったかを評価します。
 
-まず、1〜5の数字だけを出力してください：
-1 = AI-1（賛成）の意見に完全に賛成
-2 = AI-1にやや賛成
-3 = 両者同等、判定不能
-4 = AI-2にやや賛成
-5 = AI-2（反対）の意見に完全に賛成
+      まず、1〜5の数字だけを出力してください：
+      1 = AI-1（賛成）の意見に完全に賛成
+      2 = AI-1にやや賛成
+      3 = AI-2にやや賛成
+      4 = AI-2（反対）の意見に完全に賛成
 
-続いて、200文字以内で理由を述べてください。
+      続いて、200文字以内で理由を述べてください。
 
-フォーマット：
-スコア: [1-5]
-説明: [理由]
+      フォーマット：
+      スコア: [1-4]
+      説明: [理由]
 
-議題：「${topic}」
-AI-1の意見：「${ai1History[ai1History.length - 1]}」
-AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
+      議題：「${topic}」
+      AI-1の意見：「${ai1History[ai1History.length - 1]}」
+      AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
 
-    const aiJudge = await generateGeminiResponse(promptJudge);
-    const scoreMatch = aiJudge.match(/スコア[:：]\s*([1-5])/);
+    const aiJudge = await generateGeminiResponseWithRetry(promptJudge);
+    const scoreMatch = aiJudge.match(/スコア[:：]\s*([1-4])/);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : 3;
     const explanationMatch = aiJudge.match(/説明[:：]\s*([\s\S]+)/);
     const aiJudgeText = explanationMatch ? explanationMatch[1].trim() : "";
@@ -157,9 +207,8 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
     const winnerMap = {
       1: "AI-1（賛成）の意見に賛成",
       2: "AI-1（賛成）の意見にやや賛成",
-      3: "判定不能（引き分け）",
-      4: "AI-2（反対）の意見にやや賛成",
-      5: "AI-2（反対）の意見に賛成"
+      3: "AI-2（反対）の意見にやや賛成",
+      4: "AI-2（反対）の意見に賛成"
     };
     setFinalDecision(`🏁 結論：${winnerMap[score] || "判定不能"}`);
 
@@ -233,24 +282,23 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
         />
+       
+        <CharacterSlider
+          title="AI-1（賛成役）を選ぶ"
+          characters={AI1_CHARACTERS}
+          selectedKey={ai1Persona}
+          setSelectedKey={setAi1Persona}
+          scrollRef={ai1ScrollRef}
+        />
 
-        
-<CharacterSlider
-  title="AI-1（賛成役）を選ぶ"
-  characters={AI1_CHARACTERS}
-  selectedKey={ai1Persona}
-  setSelectedKey={setAi1Persona}
-  scrollRef={ai1ScrollRef}
-/>
 
-
-<CharacterSlider
-  title="AI-2（反対役）を選ぶ"
-  characters={AI2_CHARACTERS}
-  selectedKey={ai2Persona}
-  setSelectedKey={setAi2Persona}
-  scrollRef={ai2ScrollRef}
-/>
+        <CharacterSlider
+          title="AI-2（反対役）を選ぶ"
+          characters={AI2_CHARACTERS}
+          selectedKey={ai2Persona}
+          setSelectedKey={setAi2Persona}
+          scrollRef={ai2ScrollRef}
+        />
 
         {/* 応酬回数セレクト UI */}
         <div className="mb-4">
@@ -277,10 +325,10 @@ AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
         </div>
 
         <StartDebateButton
-  disabled={!topic.trim() || isDebating}
-  onClick={handleStartDebate}
-  isDebating={isDebating}
-/>
+          disabled={!topic.trim() || isDebating}
+          onClick={handleStartDebate}
+          isDebating={isDebating}
+        />
 
         {currentTopic && (
           <div className="text-center text-indigo-300 mt-4 select-text text-lg sm:text-xl font-semibold">
