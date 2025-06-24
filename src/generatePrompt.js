@@ -8,7 +8,7 @@ export function buildPrompt({
   opponent,
   summary,
 }) {
-  let p = `${role}（${stance}）。\n`;
+  let p = `${role}。\n`;
   p +=`あなたの性格・口調・思考：${persona}`;
   p += `制限：${limit}文字以内\n`;
   p += `議題：「${topic}」\n`;
@@ -17,7 +17,7 @@ export function buildPrompt({
   if (opponent) p += `直前の相手意見：「${opponent}」\n`;
 
   const actions = {
-    intro: "初期意見を述べよ。",
+    intro: `${stance}の初期意見を述べよ。`,
     rebuttal: "反論せよ。",
     final: "総括と補足意見を述べよ。"
   };
