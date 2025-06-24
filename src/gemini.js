@@ -2,7 +2,7 @@ export async function generateGeminiResponse(prompt) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: {
