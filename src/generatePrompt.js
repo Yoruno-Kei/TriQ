@@ -18,7 +18,7 @@ export function buildPrompt({
 
   const actions = {
     intro: `${stance}の初期意見を述べよ。`,
-    rebuttal: "反論せよ。",
+    rebuttal: `${stance}側として反論せよ。`,
     final: "総括と補足意見を述べよ。"
   };
   p += actions[type];
