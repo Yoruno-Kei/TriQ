@@ -24,7 +24,7 @@ export default function MainPage() {
   const [selectedTag, setSelectedTag] = useState("");
   const [showMoreTurns, setShowMoreTurns] = useState(false);
   const [ai1Persona, setAi1Persona] = useState("AIpropose");
-  const [ai2Persona, setAi2Persona] = useState("AIpropose");
+  const [ai2Persona, setAi2Persona] = useState("AIoppose");
   const [currentModel, setCurrentModel] = useState(getCurrentGeminiModel());
 
   const logRef = useRef([]);
