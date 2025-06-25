@@ -1,6 +1,3 @@
-import { doc, getDoc, collection, setDoc, addDoc } from "firebase/firestore";
-import { db } from "./firebase"; 
-
 // ログをサーバーに保存する関数
 export async function saveLogToServer(logData, existingId = null) {
   const res = await fetch("/api/logs/save", {
