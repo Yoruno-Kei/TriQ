@@ -7,7 +7,7 @@ import {
   TwitterIcon,
   LineIcon,
 } from "react-share";
-import { saveLogToServer } from "./firestoreUtils";
+import { saveLogToFirestore } from "./firestoreUtils";
 
 export default function ShareButtons({ logData, title }) {
   const [open, setOpen] = useState(false);
@@ -47,7 +47,7 @@ export default function ShareButtons({ logData, title }) {
   const handleShareClick = async () => {
     if (!logData) return;
     try {
-      const id = await saveLogToServer(logData, logData.firestoreId);
+      const id = await saveLogToFirestore(logData, logData.firestoreId);
       setDocId(id);
       const url = `${window.location.origin}/TriQ/log/${id}`;
       setShareUrl(url);

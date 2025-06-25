@@ -109,7 +109,6 @@ export default function MainPage() {
         type: "intro",
         topic,
         limit: "100",
-        summary: summary1
       })
     );
 
@@ -121,11 +120,10 @@ export default function MainPage() {
         role: "AI-2",
         stance: "議題に反対",
         persona: ai2Prompts.personality,
-        type: "intro",
+        type: "rebuttal",
         topic,
         limit: "100",
         opponent: ai1Intro.trim(),
-        summary: summary2
       })
     );
 

@@ -17,7 +17,7 @@ export function buildPrompt({
   if (opponent) p += `直前の相手意見：「${opponent}」\n`;
 
   const actions = {
-    intro: `${stance}の初期意見を述べよ。`,
+    intro: `${stance}側から初期意見を述べよ。`,
     rebuttal: `${stance}側として反論せよ。`,
     final: "総括と補足意見を述べよ。"
   };
