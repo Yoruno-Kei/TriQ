@@ -7,7 +7,7 @@ import {
   TwitterIcon,
   LineIcon,
 } from "react-share";
-import { saveLogToServer } from "./firestoreUtils";
+import { saveLogToFirestore } from "./firestoreUtils";
 
 export default function ShareButtons({ logData, title }) {
   const [open, setOpen] = useState(false);
@@ -47,13 +47,12 @@ export default function ShareButtons({ logData, title }) {
   const handleShareClick = async () => {
     if (!logData) return;
     try {
-      const id = await saveLogToServer(logData, logData.firestoreId);
-      setDocId(id);
+      const id = await saveLogToFirestore(logData, logData.firestoreId);
       const url = `${window.location.origin}/TriQ/log/${id}`;
       setShareUrl(url);
       setOpen(true);
 
-           // ローカル側にもFirestoreのIDを保存
+      // ローカル側にもFirestoreのIDを保存
       const updatedLog = { ...logData, firestoreId: id };
       const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
       const updatedLogs = logs.map((log) =>

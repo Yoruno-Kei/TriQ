@@ -25,6 +25,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-triq-server/serviceAccountKey.json
-triq-server/node_modules

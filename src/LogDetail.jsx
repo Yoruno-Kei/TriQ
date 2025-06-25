@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
 import ShareButtons from "./ShareButtons";
 import { LogBubble, getPhase } from "./LogBubbles";
-import { getLogFromServer } from "./firestoreUtils";
+import { getLogFromFirestore } from "./firestoreUtils";
 
 
 export default function LogDetail() {
@@ -24,7 +24,7 @@ export default function LogDetail() {
       // Firestore形式IDは短い（例: 20文字以下）
       if (id.length <= 20) {
         try {
-          const doc = await getLogFromServer(id);
+          const doc = await getLogFromFirestore(id);
           if (doc) {
             setIsShared(true);
             setEntryState(doc);
