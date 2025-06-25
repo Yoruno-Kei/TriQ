@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef} from "react";
 import { useNavigate } from "react-router-dom";
-import { generateGeminiResponseWithRetry, getCurrentGeminiModel,tryRestoreGemini25 } from "./geminiWithRetry";
+import { generateGeminiResponseWithRetry, getCurrentGeminiModel, tryRestoreGemini25 } from "./geminiWithRetry";
 import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
 import { BookOpen, X } from "lucide-react";
@@ -25,6 +25,7 @@ export default function MainPage() {
   const [showMoreTurns, setShowMoreTurns] = useState(false);
   const [ai1Persona, setAi1Persona] = useState("AIagree");
   const [ai2Persona, setAi2Persona] = useState("AIoppose");
+  const [currentModel, setCurrentModel] = useState(getCurrentGeminiModel());
 
   const logRef = useRef([]);
   const ai1ScrollRef = useRef(null);
