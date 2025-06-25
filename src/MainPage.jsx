@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef} from "react";
 import { useNavigate } from "react-router-dom";
-import { generateGeminiResponseWithRetry } from "./geminiWithRetry";
+import { generateGeminiResponseWithRetry, getCurrentGeminiModel,tryRestoreGemini25 } from "./geminiWithRetry";
 import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
 import { BookOpen, X } from "lucide-react";
@@ -70,6 +70,17 @@ export default function MainPage() {
       }, delay);
     });
   };
+
+   useEffect(() => {
+    // 2分ごとに2.5モデル復帰試行
+    const interval = setInterval(async () => {
+      await tryRestoreGemini25();
+      setCurrentModel(getCurrentGeminiModel()); // 状態更新してUI反映
+    }, 120000); // 120000ms = 2分
+
+    // コンポーネントアンマウント時にクリア
+    return () => clearInterval(interval);
+  }, []);
 
   const handleStartDebate = async () => {
     if (!topic.trim()) return;
@@ -336,10 +347,10 @@ export default function MainPage() {
           onClick={handleStartDebate}
           isDebating={isDebating}
         />
-        
-        <span className="text-xs text-gray-400 absolute bottom-2 right-2">
-          使用中モデル: Gemini {getCurrentGeminiModel()}
-        </span>
+
+        <div className="fixed bottom-2 right-2 text-xs text-gray-400 select-none pointer-events-none">
+          使用モデル: Gemini {currentModel}
+        </div>
 
         {currentTopic && (
           <div className="text-center text-indigo-300 mt-4 select-text text-lg sm:text-xl font-semibold">
