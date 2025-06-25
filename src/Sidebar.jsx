@@ -1,6 +1,6 @@
 import React from "react";
 import { Trash2, X } from "lucide-react";
-import { deleteLogFromFirestore } from "./firebaseUtils";
+import { deleteLogFromFirestore } from "./firestoreUtils";
 
 export default function Sidebar({
   sidebarOpen,
