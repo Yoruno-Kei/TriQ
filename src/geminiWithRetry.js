@@ -73,7 +73,7 @@ export async function tryRestoreGemini25() {
 
 function isOverloadError(err) {
   const msg = err.message?.toLowerCase() || "";
-  return msg.includes("overloaded") || msg.includes("429");
+  return msg.includes("overloaded") || msg.includes("429") || msg.includes("503") || msg.includes("unavailable");
 }
 
 function isQuotaError(err) {
