@@ -1,30 +1,91 @@
 // geminiWithRetry.js
-import { generateGeminiResponse } from "./gemini";
 
-/**
- * Gemini API にリクエストを送り、過負荷時は自動でリトライする
- * @param {string} prompt - AIに送るプロンプト
- * @param {number} retries - リトライ回数（初期値：3）
- * @param {number} delayMs - 各リトライ前の遅延ミリ秒（初期値：2000）
- * @returns {Promise<string>}
- */
-export async function generateGeminiResponseWithRetry(prompt, retries = 3, delayMs = 2000) {
-  for (let attempt = 0; attempt < retries; attempt++) {
+import { generateGeminiResponse25, generateGeminiResponse20 } from "./gemini";
+
+let currentModel = "2.5"; // "2.5" or "2.0"
+let lastFallbackTime = null;
+const FALLBACK_TIMEOUT = 2 * 60 * 1000; // 2分
+const RETRY_LIMIT_25 = 3; // 2.5の試行回数
+
+export function getCurrentGeminiModel() {
+  return currentModel;
+}
+
+export async function generateGeminiResponseWithRetry(prompt, retryDelayMs = 2000) {
+  let lastError = null;
+
+  // --- 試行: Gemini 2.5 を RETRY_LIMIT_25 回まで試す ---
+  for (let attempt = 0; attempt < RETRY_LIMIT_25; attempt++) {
     try {
-      // ランダムな待機時間（少し間を空けて送る）
-      await new Promise((res) => setTimeout(res, Math.random() * 1000 + 1000));
-      const result = await generateGeminiResponse(prompt);
-      return result;
+      await randomDelay();
+      const response = await generateGeminiResponse25(prompt);
+      if (!response || !response.trim()) throw new Error("空レスポンス");
+      currentModel = "2.5";
+      return response;
     } catch (err) {
-      const isOverloaded = err.message?.toLowerCase().includes("overloaded");
+      lastError = err;
+      const isOverloaded = isOverloadError(err);
+      const isQuotaExceeded = isQuotaError(err);
 
-      if (attempt < retries - 1 && isOverloaded) {
-        console.warn(`Gemini 過負荷。${delayMs}ms 待機後に再試行 (${attempt + 1}/${retries})`);
-        await new Promise((res) => setTimeout(res, delayMs));
-      } else {
-        console.error("Gemini応答エラー:", err);
-        throw err;
+      console.warn(`Gemini 2.5失敗 (${attempt + 1}/${RETRY_LIMIT_25})`, err.message);
+
+      if (isQuotaExceeded) {
+        console.warn("✅ Gemini 2.5の無料上限に達しました。2.0へ切替。");
+        currentModel = "2.0";
+        lastFallbackTime = Date.now();
+        break;
+      }
+
+      if (attempt < RETRY_LIMIT_25 - 1 && isOverloaded) {
+        await wait(retryDelayMs);
       }
     }
   }
+
+  // --- フォールバック: Gemini 2.0 ---
+  try {
+    await randomDelay();
+    const response = await generateGeminiResponse20(prompt);
+    if (!response || !response.trim()) throw new Error("空レスポンス (2.0)");
+    currentModel = "2.0";
+    return response;
+  } catch (err) {
+    console.error("Gemini 2.0も失敗:", err);
+    throw lastError || err;
+  }
+}
+
+// 別の場所で定期的に2.5に戻れるか確認する仕組み（例: useEffectで）
+export async function tryRestoreGemini25() {
+  if (currentModel === "2.0" && lastFallbackTime && Date.now() - lastFallbackTime > FALLBACK_TIMEOUT) {
+    try {
+      const result = await generateGeminiResponse25("test");
+      if (result && result.trim()) {
+        console.log("✅ Gemini 2.5への自動復帰成功");
+        currentModel = "2.5";
+        lastFallbackTime = null;
+      }
+    } catch (_) {
+      // still failed
+    }
+  }
+}
+
+function isOverloadError(err) {
+  const msg = err.message?.toLowerCase() || "";
+  return msg.includes("overloaded") || msg.includes("429");
+}
+
+function isQuotaError(err) {
+  const msg = err.message?.toLowerCase() || "";
+  return msg.includes("quota") || msg.includes("exceeded") || msg.includes("daily");
+}
+
+function wait(ms) {
+  return new Promise((res) => setTimeout(res, ms));
+}
+
+function randomDelay(min = 1000, max = 2000) {
+  const delay = Math.floor(Math.random() * (max - min)) + min;
+  return wait(delay);
 }

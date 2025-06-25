@@ -336,6 +336,10 @@ export default function MainPage() {
           onClick={handleStartDebate}
           isDebating={isDebating}
         />
+        
+        <span className="text-xs text-gray-400 absolute bottom-2 right-2">
+          使用中モデル: Gemini {getCurrentGeminiModel()}
+        </span>
 
         {currentTopic && (
           <div className="text-center text-indigo-300 mt-4 select-text text-lg sm:text-xl font-semibold">
