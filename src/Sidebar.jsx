@@ -1,5 +1,6 @@
 import React from "react";
 import { Trash2, X } from "lucide-react";
+import { deleteLogFromFirestore } from "./firebaseUtils";
 
 export default function Sidebar({
   sidebarOpen,
@@ -131,9 +132,21 @@ export default function Sidebar({
                 </div>
               )}
               <button
-                onClick={(e) => {
+                onClick={async (e) => {
                   console.log("Navigating to", `/log/${entry.id}`);
                   e.stopPropagation();
+
+                // FirestoreにもIDがあるなら削除
+                if (entry.firestoreId) {
+                  try {
+                    await deleteLogFromFirestore(entry.firestoreId);
+                    console.log("✅ Firestoreから削除成功");
+                  } catch (err) {
+                    console.error("❌ Firestore削除失敗:", err);
+                    alert("Firestoreの削除に失敗しました");
+                  }
+                }                  
+                  
                   deleteLog(entry.id);
                 }}
                 className="absolute top-2 right-2"

@@ -1,4 +1,4 @@
-import { doc, getDoc, collection, setDoc, addDoc } from "firebase/firestore";
+import { doc, getDoc, collection, setDoc, addDoc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase"; 
 
 // ログをFirestoreの triqLogs コレクションに保存する関数
@@ -21,4 +21,10 @@ export async function getLogFromFirestore(id) {
     return docSnap.data();
   }
   return null;
+}
+
+export async function deleteLogFromFirestore(id) {
+  if (!id) return;
+  const docRef = doc(db, "triqLogs", id);
+  await deleteDoc(docRef);
 }
