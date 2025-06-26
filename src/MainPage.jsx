@@ -292,13 +292,19 @@ export default function MainPage() {
       ></div>
 
       <div className="max-w-[min(600px,90vw)] mx-auto pt-6">
-        <input
-          className="w-full p-4 rounded bg-gray-900 text-white text-lg mb-4 placeholder-gray-500 border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          type="text"
-          placeholder="議題を入力..."
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-        />
+       <label className="block text-sm text-gray-300 mb-1">応酬回数</label>
+      <textarea
+        className="w-full resize-none p-4 rounded bg-gray-900 text-white text-lg mb-4 placeholder-gray-500 border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+        rows={1}
+        placeholder="議題を入力..."
+        value={topic}
+        onChange={(e) => {
+          setTopic(e.target.value);
+          e.target.style.height = "auto";  // まず高さをリセット
+          e.target.style.height = `${e.target.scrollHeight}px`; // 入力に応じて高さを調整
+        }}
+        style={{ overflow: "hidden" }}
+      />
        
         <CharacterSlider
           title="AI-1（賛成役）を選ぶ"
