@@ -40,7 +40,7 @@ export default function Sidebar({
         {/* 課題検索 */}
         <input
           type="text"
-          placeholder="議題検索..."
+          placeholder="検索..."
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.target.value)}
           className="w-full p-2 mt-3 rounded bg-gray-800 text-white placeholder-gray-400 border border-indigo-600"
@@ -108,7 +108,7 @@ export default function Sidebar({
       </div>
 
       {/* ログ一覧 */}
-      <div className="overflow-y-auto h-[calc(100%-240px)] px-4 py-3">
+      <div className="overflow-y-auto h-[calc(100%-240px)] px-20 py-3">
         {filteredLogs.length === 0 ? (
           <p className="text-gray-500 text-center mt-10">ログがありません</p>
         ) : (

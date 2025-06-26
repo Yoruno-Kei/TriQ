@@ -21,7 +21,7 @@ export async function generateGeminiResponseWithRetry(prompt, retryDelayMs = 200
       const response = await generateGeminiResponse25(prompt);
       if (!response || !response.trim()) throw new Error("空レスポンス");
       currentModel = "2.5";
-      return response;
+      return { response, model: "2.5" };
     } catch (err) {
       lastError = err;
       const isOverloaded = isOverloadError(err);
@@ -37,7 +37,13 @@ export async function generateGeminiResponseWithRetry(prompt, retryDelayMs = 200
       }
 
       if (attempt < RETRY_LIMIT_25 - 1 && isOverloaded) {
-        await wait(retryDelayMs);
+        // 指数バックオフで待つ（例: 2秒, 4秒, 8秒...）
+        const delay = baseRetryDelayMs * Math.pow(2, attempt);
+        console.log(`Overload retry: wait ${delay}ms before next attempt`);
+        await wait(delay);
+      } else {
+        break;
+
       }
     }
   }
@@ -48,7 +54,7 @@ export async function generateGeminiResponseWithRetry(prompt, retryDelayMs = 200
     const response = await generateGeminiResponse20(prompt);
     if (!response || !response.trim()) throw new Error("空レスポンス (2.0)");
     currentModel = "2.0";
-    return response;
+    return { response, model: "2.0" };
   } catch (err) {
     console.error("Gemini 2.0も失敗:", err);
     throw lastError || err;
@@ -85,7 +91,7 @@ function wait(ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
 
-function randomDelay(min = 1000, max = 2000) {
+function randomDelay(min = 1000, max = 3500) {
   const delay = Math.floor(Math.random() * (max - min)) + min;
   return wait(delay);
 }

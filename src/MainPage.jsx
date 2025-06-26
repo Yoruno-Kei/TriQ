@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef} from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { BookOpen, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { generateGeminiResponseWithRetry, getCurrentGeminiModel, tryRestoreGemini25 } from "./geminiWithRetry";
 import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
-import { BookOpen, X } from "lucide-react";
-import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
-import CharacterSlider from "./CharacterSlider";
-import StartDebateButton from "./StartDebateButton";
-import { buildPrompt } from "./generatePrompt";
+import TurnDeciderAnimation from "./TurnDeciderAnimation";
+import DebateControls from "./DebateControls";
+import UserInputArea from "./UserInputArea";
+import { getCurrentGeminiModel, tryRestoreGemini25 } from "./geminiWithRetry";
+import { generateDebateTopic } from "./generateTopic";
+import { handleStartDebate as runDebate } from "./handleStartDebate";
 
 export default function MainPage() {
   const [topic, setTopic] = useState("");
@@ -26,6 +27,20 @@ export default function MainPage() {
   const [ai1Persona, setAi1Persona] = useState("AIpropose");
   const [ai2Persona, setAi2Persona] = useState("AIoppose");
   const [currentModel, setCurrentModel] = useState(getCurrentGeminiModel());
+  const [isGeneratingTopic, setIsGeneratingTopic] = useState(false);
+
+  const [userInput, setUserInput] = useState("");
+  const [isUserTurn, setIsUserTurn] = useState(false);
+
+  const [userDebateMode, setUserDebateMode] = useState(false);
+  const [userSide, setUserSide] = useState(null);
+
+  const [showTurnDecider, setShowTurnDecider] = useState(false);
+  const [decidedFirstTurn, setDecidedFirstTurn] = useState(null);
+
+  const [clickCount, setClickCount] = useState(0);
+  const [cooldown, setCooldown] = useState(false);
+  const cooldownTime = 5 * 1000;
 
   const logRef = useRef([]);
   const ai1ScrollRef = useRef(null);
@@ -37,6 +52,46 @@ export default function MainPage() {
     const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
     setSavedLogs(logs);
   }, []);
+
+  useEffect(() => {
+    let timer;
+    if (cooldown) {
+      timer = setTimeout(() => {
+        setCooldown(false);
+        setClickCount(0);
+      }, cooldownTime);
+    }
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      await tryRestoreGemini25();
+      setCurrentModel(getCurrentGeminiModel());
+    }, 120000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 議題生成
+  const handleGenerateTopic = async () => {
+    if (cooldown || isGeneratingTopic) return;
+
+    if (clickCount >= 3) {
+      setCooldown(true);
+      return;
+    }
+
+    setClickCount((c) => c + 1);
+    setIsGeneratingTopic(true);
+    try {
+      const allTopics = savedLogs.map((log) => log.topic);
+      const recentTopics = allTopics.length > 5 ? allTopics.slice(-20) : allTopics;
+      const newTopic = await generateDebateTopic(recentTopics);
+      setTopic(newTopic);
+    } finally {
+      setIsGeneratingTopic(false);
+    }
+  };
 
   const handleMainClick = () => {
     if (sidebarOpen) setSidebarOpen(false);
@@ -72,197 +127,74 @@ export default function MainPage() {
     });
   };
 
-   useEffect(() => {
-    // 2分ごとに2.5モデル復帰試行
-    const interval = setInterval(async () => {
-      await tryRestoreGemini25();
-      setCurrentModel(getCurrentGeminiModel()); // 状態更新してUI反映
-    }, 120000); // 120000ms = 2分
-
-    // コンポーネントアンマウント時にクリア
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleStartDebate = async () => {
-    if (!topic.trim()) return;
-
-    setIsDebating(true);
-    setLog([]);
-    logRef.current = [];
-    setFinalDecision("");
-    setCurrentTopic(topic);
-
-    const ai1Prompts = AI1_CHARACTERS[ai1Persona].prompts;
-    const ai2Prompts = AI2_CHARACTERS[ai2Persona].prompts;
-
-    const ai1History = [];
-    const ai2History = [];
-
-    const summary1 = ai1History.join(" / "); // AI-1の意見履歴
-    const summary2 = ai2History.join(" / "); // AI-2の意見履歴
-
-    const ai1Intro = await generateGeminiResponseWithRetry(
-      buildPrompt({
-        role: "AI-1",
-        stance: "議題に賛成",
-        persona: ai1Prompts.personality,
-        type: "intro",
-        topic,
-        limit: "100",
-      })
-    );
-
-    ai1History.push(ai1Intro.trim());
-    await typeText(ai1Intro.trim(), "🧠 AI-1（賛成）：");
-
-    const ai2Intro = await generateGeminiResponseWithRetry(
-      buildPrompt({
-        role: "AI-2",
-        stance: "議題に反対",
-        persona: ai2Prompts.personality,
-        type: "rebuttal",
-        topic,
-        limit: "100",
-        opponent: ai1Intro.trim(),
-      })
-    );
-
-    ai2History.push(ai2Intro.trim());
-    await typeText(ai2Intro.trim(), "⚖️ AI-2（反対）：");
-
-    for (let i = 0; i < turns - 2; i++) {
-      if (i % 2 === 0) {
-        const prompt = buildPrompt({
-          role: "AI-1",
-          stance: "議題に賛成",
-          persona: ai1Prompts.personality,
-          type: "rebuttal",
-          topic,
-          limit: "100",
-          opponent: ai2History.at(-1),
-          summary: summary1
-        });
-        const response = await generateGeminiResponseWithRetry(prompt);
-        ai1History.push(response.trim());
-        await typeText(response.trim(), "🧠 AI-1（再反論）：");
-      } else {
-        const prompt = buildPrompt({
-          role: "AI-2",
-          stance: "議題に反対",
-          persona: ai2Prompts.personality,
-          type: "rebuttal",
-          topic,
-          limit: "100",
-          opponent: ai1History.at(-1),
-          summary: summary2
-        });
-        const response = await generateGeminiResponseWithRetry(prompt);
-        ai2History.push(response.trim());
-        await typeText(response.trim(), "⚖️ AI-2（再反論）：");
-      }
-    }
-  
-    const finalAI1 = (
-      await generateGeminiResponseWithRetry(
-        buildPrompt({
-          role: "AI-1",
-          stance: "議題に賛成",
-          persona: ai1Prompts.personality,
-          type: "final",
-          topic,
-          limit: "150",
-          summary: summary1
-        })
-      )
-    ).trim();
-
-    await typeText(finalAI1, "🧠 AI-1（最終意見）：");
-
-    const finalAI2 = (
-      await generateGeminiResponseWithRetry(
-        buildPrompt({
-          role: "AI-2",
-          stance: "議題に反対",
-          persona: ai2Prompts.personality,
-          type: "final",
-          topic,
-          limit: "150",
-          summary: summary2
-        })
-      )
-    ).trim();
-
-    await typeText(finalAI2, "⚖️ AI-2（最終意見）：");
-
-    
-    const promptJudge = `あなたはAI討論アプリの判定役（AI-3）です。
-      あなたは中立で公正な審査官として、議論全体を俯瞰し、どちらの主張がより説得力があったかを評価します。
-
-      まず、1〜5の数字だけを出力してください：
-      1 = AI-1（賛成）の意見に完全に賛成
-      2 = AI-1にやや賛成
-      3 = AI-2にやや賛成
-      4 = AI-2（反対）の意見に完全に賛成
-
-      続いて、200文字以内で理由を述べてください。
-
-      フォーマット：
-      スコア: [1-4]
-      説明: [理由]
-
-      議題：「${topic}」
-      AI-1の意見：「${ai1History[ai1History.length - 1]}」
-      AI-2の意見：「${ai2History[ai2History.length - 1]}」`;
-
-    const aiJudge = await generateGeminiResponseWithRetry(promptJudge);
-    const scoreMatch = aiJudge.match(/スコア[:：]\s*([1-4])/);
-    const score = scoreMatch ? parseInt(scoreMatch[1]) : 3;
-    const explanationMatch = aiJudge.match(/説明[:：]\s*([\s\S]+)/);
-    const aiJudgeText = explanationMatch ? explanationMatch[1].trim() : "";
-    await typeText(aiJudgeText, "🧩 AI-3（判定）：");
-
-    const winnerMap = {
-      1: "AI-1（賛成）の意見に賛成",
-      2: "AI-1（賛成）の意見にやや賛成",
-      3: "AI-2（反対）の意見にやや賛成",
-      4: "AI-2（反対）の意見に賛成"
-    };
-    setFinalDecision(`🏁 結論：${winnerMap[score] || "判定不能"}`);
-
-    const newLog = {
-      id: crypto.randomUUID(),
-      topic,
-      tags: [],
-      log: logRef.current,
-      winner: winnerMap[score] || "判定不能",
-      comment: "",
-      timestamp: new Date().toISOString(),
-      ai1PersonaKey: ai1Persona,
-      ai2PersonaKey: ai2Persona,
-      ai1PersonaLabel: AI1_CHARACTERS[ai1Persona].label,
-      ai2PersonaLabel: AI2_CHARACTERS[ai2Persona].label,
-    };
-
-    const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
-    logs.push(newLog);
-    localStorage.setItem("triqLogs", JSON.stringify(logs));
-    setSavedLogs(logs);
-    setTopic("");
-    setIsDebating(false);
+  // ユーザー入力送信処理
+  const handleUserSubmit = (text) => {
+    setLog((prev) => [...prev, text]);
+    logRef.current.push(text);
+    setIsUserTurn(false);
   };
+
+  // 先攻決定後の処理
+  const onTurnDecided = (firstTurnSide) => {
+    setDecidedFirstTurn(firstTurnSide);
+    setShowTurnDecider(false);
+    // 先攻側によってユーザーターンの開始判定など必要ならここに追加
+  };
+
+  // 討論開始時の処理（TurnDeciderを表示してから実際の議論開始はhandleStartDebateで）
+  const handleStartDebateWithTurnDecider = () => {
+    setShowTurnDecider(true);
+    setDecidedFirstTurn(null);
+  };
+
+  // 実際に討論開始処理
+  const handleStartDebate = (firstTurnSide) => {
+    runDebate({
+      topic,
+      turns,
+      ai1Persona,
+      ai2Persona,
+      typeText,
+      setFinalDecision,
+      setLog,
+      logRef,
+      setIsDebating,
+      setSavedLogs,
+      setTopic,
+      setCurrentTopic,
+      userDebateMode,
+      userSide,
+      onUserTurnChange: setIsUserTurn,
+      firstTurnSide,
+    });
+  };
+
+  // TurnDeciderが決定したら討論開始を呼ぶ
+  useEffect(() => {
+    if (decidedFirstTurn) {
+      handleStartDebate(decidedFirstTurn);
+    }
+  }, [decidedFirstTurn]);
+
+  // ユーザーの発言の接頭辞
+  const userPrefix = userSide === "pro" ? "【あなた（賛成）】 " : "【あなた（反対）】 ";
 
   return (
     <main
       className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-800 text-white p-6 font-sans relative"
       onClick={handleMainClick}
     >
+    {sidebarOpen && (
+      <div
+        className="fixed inset-0 z-40"
+        onClick={() => setSidebarOpen(false)}
+      >
       <Sidebar
         sidebarOpen={sidebarOpen}
-        closeSidebar={closeSidebar}
+        closeSidebar={() => setSidebarOpen(false)}
         savedLogs={savedLogs}
         filteredLogs={savedLogs.filter((log) => {
           const keywordMatch = log.topic.includes(searchKeyword);
-
           const filterMatch =
             filter === "all"
               ? true
@@ -271,9 +203,7 @@ export default function MainPage() {
               : filter === "con"
               ? log.winner.startsWith("AI-2")
               : log.winner.startsWith("判定不能");
-
           const tagMatch = selectedTag === "" || (log.tags || []).includes(selectedTag);
-
           return keywordMatch && filterMatch && tagMatch;
         })}
         searchKeyword={searchKeyword}
@@ -285,73 +215,42 @@ export default function MainPage() {
         selectedTag={selectedTag}
         setSelectedTag={setSelectedTag}
       />
-
-      <div
-        className="max-w-[min(600px,90vw)] mx-auto pt-6 relative z-10"
-        onClick={(e) => e.stopPropagation()}
-      ></div>
-
-      <div className="max-w-[min(600px,90vw)] mx-auto pt-6">
-       <label className="block text-sm text-gray-300 mb-1">応酬回数</label>
-      <textarea
-        className="w-full resize-none p-4 rounded bg-gray-900 text-white text-lg mb-4 placeholder-gray-500 border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
-        rows={1}
-        placeholder="議題を入力..."
-        value={topic}
-        onChange={(e) => {
-          setTopic(e.target.value);
-          e.target.style.height = "auto";  // まず高さをリセット
-          e.target.style.height = `${e.target.scrollHeight}px`; // 入力に応じて高さを調整
-        }}
-        style={{ overflow: "hidden" }}
-      />
-       
-        <CharacterSlider
-          title="AI-1（賛成役）を選ぶ"
-          characters={AI1_CHARACTERS}
-          selectedKey={ai1Persona}
-          setSelectedKey={setAi1Persona}
-          scrollRef={ai1ScrollRef}
-        />
+      </div>
+    )}
 
 
-        <CharacterSlider
-          title="AI-2（反対役）を選ぶ"
-          characters={AI2_CHARACTERS}
-          selectedKey={ai2Persona}
-          setSelectedKey={setAi2Persona}
-          scrollRef={ai2ScrollRef}
-        />
-
-        {/* 応酬回数セレクト UI */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-300 mb-1">応酬回数</label>
-          <select
-            value={turns}
-            onChange={(e) => setTurns(Number(e.target.value))}
-            className="w-full p-3 rounded bg-gray-900 text-white border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            {[4, 6, 8, 10, ...(showMoreTurns ? [12, 14, 16] : [])].map((num) => (
-              <option key={num} value={num}>
-                {num}回（{num / 2}往復）{num === 8 ? "（おすすめ）" : ""}
-              </option>
-            ))}
-          </select>
-          {!showMoreTurns && (
-            <button
-              onClick={() => setShowMoreTurns(true)}
-              className="mt-2 text-sm text-indigo-400 hover:underline"
-            >
-              もっと見る
-            </button>
-          )}
-        </div>
-
-        <StartDebateButton
-          disabled={!topic.trim() || isDebating}
-          onClick={handleStartDebate}
+      <div className="max-w-[min(600px,90vw)] mx-auto pt-6" onClick={(e) => e.stopPropagation()}>
+        <DebateControls
+          topic={topic}
+          setTopic={setTopic}
+          turns={turns}
+          setTurns={setTurns}
+          showMoreTurns={showMoreTurns}
+          setShowMoreTurns={setShowMoreTurns}
+          isGeneratingTopic={isGeneratingTopic}
+          cooldown={cooldown}
+          handleGenerateTopic={handleGenerateTopic}
+          userDebateMode={userDebateMode}
+          setUserDebateMode={setUserDebateMode}
+          userSide={userSide}
+          setUserSide={setUserSide}
+          ai1Persona={ai1Persona}
+          setAi1Persona={setAi1Persona}
+          ai2Persona={ai2Persona}
+          setAi2Persona={setAi2Persona}
+          handleStartDebateWithTurnDecider={handleStartDebateWithTurnDecider}
           isDebating={isDebating}
+          ai1ScrollRef={ai1ScrollRef}
+          ai2ScrollRef={ai2ScrollRef}
         />
+
+        {showTurnDecider && <TurnDeciderAnimation onDecide={onTurnDecided} />}
+
+        {decidedFirstTurn && (
+          <div className="mt-4 text-center text-indigo-300 font-semibold">
+            先攻決定：{decidedFirstTurn?.label}
+          </div>
+        )}
 
         <div className="fixed bottom-2 left-2 text-xs text-gray-400 select-none pointer-events-none">
           使用モデル: Gemini {currentModel}
@@ -369,12 +268,16 @@ export default function MainPage() {
           </div>
         )}
 
-        <DebateLog
-          log={log}
-          typingLog={typingLog}
-          finalDecision={finalDecision}
-          topic={currentTopic}
-        />
+        <DebateLog log={log} typingLog={typingLog} finalDecision={finalDecision} topic={currentTopic} />
+
+        {isUserTurn && (
+          <UserInputArea
+            userInput={userInput}
+            setUserInput={setUserInput}
+            onSubmit={handleUserSubmit}
+            userPrefix={userPrefix}
+          />
+        )}
       </div>
 
       <button
