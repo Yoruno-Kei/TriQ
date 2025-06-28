@@ -48,7 +48,7 @@ export default function ShareButtons({ logData, title }) {
     if (!logData) return;
     try {
       const id = await saveLogToFirestore(logData, logData.firestoreId);
-      const url = `${window.location.origin}/TriQ/log/${id}`;
+      const url = `${window.location.origin}/TriQ/?redirect=log/${id}`;
       setShareUrl(url);
       setOpen(true);
 

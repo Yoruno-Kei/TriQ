@@ -12,8 +12,19 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function EvaluationPopup({ result, onClose }) {
   if (!result) return null;
 
-  const { newScores, changes, levelInfo, title, summary } = result;
-  const leveledUp = levelInfo.previousLevel !== undefined && levelInfo.level > levelInfo.previousLevel;
+  const {
+  newScores,
+  changes,
+  title,
+  summary,
+  level,
+  previousLevel,
+  exp,
+  nextLevelExp,
+  progressRate,
+} = result;
+
+const leveledUp = previousLevel !== undefined && level > previousLevel;
 
   const data = [
     { subject: "Logic", value: newScores.logic },
@@ -23,6 +34,8 @@ export default function EvaluationPopup({ result, onClose }) {
     { subject: "Depth", value: newScores.depth },
     { subject: "Total", value: newScores.total },
   ];
+
+            console.log("📊 newScores:", newScores);
 
   return (
     <AnimatePresence>
@@ -58,7 +71,7 @@ export default function EvaluationPopup({ result, onClose }) {
             animate={{ scale: 1.1 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            🌟 {title}（Lv.{levelInfo.level}）
+            🌟 {title.current ? title.current.label : "称号なし"}（Lv.{level}）
           </motion.p>
 
           {/* レーダーチャート（レスポンシブ） */}
@@ -82,13 +95,13 @@ export default function EvaluationPopup({ result, onClose }) {
           {/* 経験値バー */}
           <div className="mb-4">
             <p className="text-sm text-gray-600">
-              経験値: {levelInfo.exp} / {levelInfo.nextLevelExp}
+              経験値: {exp} / {nextLevelExp}
             </p>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden mt-1">
               <motion.div
                 className="bg-green-500 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${levelInfo.progressRate * 100}%` }}
+                animate={{ width: `${progressRate * 100}%` }}
                 transition={{ duration: 1 }}
               />
             </div>
@@ -98,14 +111,14 @@ export default function EvaluationPopup({ result, onClose }) {
           <div className="text-left text-sm text-gray-700 mb-4">
             <p className="font-semibold mb-1">📈 今回の変化:</p>
             <ul className="list-disc list-inside">
-              {Object.entries(changes).map(([key, value]) =>
-                key !== "total" ? (
-                  <li key={key}>
-                    {key[0].toUpperCase() + key.slice(1)}: {value >= 0 ? "+" : ""}
-                    {value}
-                  </li>
-                ) : null
-              )}
+                {changes && Object.entries(changes).map(([key, value]) =>
+                  key !== "total" ? (
+                    <li key={key}>
+                      {key[0].toUpperCase() + key.slice(1)}: {value >= 0 ? "+" : ""}
+                      {value}
+                    </li>
+                  ) : null
+                )}
               <li>総合得点: {changes.total >= 0 ? "+" : ""}{changes.total}</li>
             </ul>
           </div>

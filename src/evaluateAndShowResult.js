@@ -21,6 +21,8 @@ export async function evaluateAndShowResult({
   const title = getTitle(levelInfo.level);
   const changes = getStatChanges(updatedStats);
 
+  console.log("🧪 スコア変化（changes）:", changes);
+
   setEvaluationResult({
     newScores: {
       logic: updatedStats.logic,
@@ -28,6 +30,7 @@ export async function evaluateAndShowResult({
       expression: updatedStats.expression,
       diversity: updatedStats.diversity,
       depth: updatedStats.depth,
+      total: updatedStats.total,
     },
     changes,
     levelInfo,

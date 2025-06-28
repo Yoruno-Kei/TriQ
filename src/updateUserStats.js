@@ -17,6 +17,8 @@ export async function evaluateAndUpdateUserStats({ topic, debateSummary, explana
   const prompt = generateEvaluationPrompt({ topic, debateSummary, explanation });
   const { response } = await generateGeminiResponseWithRetry(prompt);
 
+  console.log("🧪 Raw evaluation response:\n", response);
+
   const newScores = {
     logic: parseScore(response, "Logic"),
     persuasiveness: parseScore(response, "Persuasiveness"),

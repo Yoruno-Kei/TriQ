@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation  } from "react-router-dom";
 import { Award, X } from "lucide-react";
 import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
@@ -49,6 +49,8 @@ export default function MainPage() {
   const logRef = useRef([]);
   const userReplyResolver = useRef(null);
 
+  const location = useLocation();
+
   const ai1ScrollRef = useRef(null);
   const ai2ScrollRef = useRef(null);
 
@@ -97,6 +99,15 @@ export default function MainPage() {
     }, 120000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const redirectPath = params.get("redirect");
+    if (redirectPath) {
+      // クエリを削除しつつリダイレクト
+      navigate(`/${redirectPath}`, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   // 議題生成
   const handleGenerateTopic = async () => {
