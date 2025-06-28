@@ -22,20 +22,14 @@ export default function Sidebar({
   );
 
   return (
-    <aside
-      className={`fixed top-0 right-0 bottom-0 z-50 bg-gray-950 text-white shadow-2xl transition-transform duration-300 ease-in-out ${
-        sidebarOpen ? "translate-x-0" : "translate-x-full"
-      }`}
-      style={{ width: "80vw", maxWidth: "320px", minWidth: "260px" }}
-      onClick={(e) => e.stopPropagation()}
-    >
+      <aside
+        className="h-full w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
       {/* ヘッダー */}
       <div className="p-4 border-b border-gray-800 sticky top-0 bg-gray-950 z-10">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-indigo-300">ログ</h2>
-          <button onClick={closeSidebar}>
-            <X className="w-6 h-6 text-gray-400 hover:text-white" />
-          </button>
         </div>
         {/* 課題検索 */}
         <input
@@ -108,7 +102,7 @@ export default function Sidebar({
       </div>
 
       {/* ログ一覧 */}
-      <div className="overflow-y-auto h-[calc(100%-240px)] px-20 py-3">
+      <div className="overflow-y-auto h-[calc(100%-240px)] px-4 py-3 pb-24 scroll-smooth">
         {filteredLogs.length === 0 ? (
           <p className="text-gray-500 text-center mt-10">ログがありません</p>
         ) : (

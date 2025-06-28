@@ -22,8 +22,6 @@ function App() {
     AIたちによる未来型討論アプリ
   </p>
 </header>
-
-
         <Routes>
           <Route path="/" element={<MainPage />} />
           <Route path="/log/:id" element={<LogDetail />} />

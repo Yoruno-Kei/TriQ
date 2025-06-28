@@ -4,8 +4,9 @@ import { generateGeminiResponse25, generateGeminiResponse20 } from "./gemini";
 
 let currentModel = "2.5"; // "2.5" or "2.0"
 let lastFallbackTime = null;
-const FALLBACK_TIMEOUT = 2 * 60 * 1000; // 2分
 const RETRY_LIMIT_25 = 3; // 2.5の試行回数
+const baseRetryDelayMs = 2000; // 2秒を基準に指数バックオフ
+
 
 export function getCurrentGeminiModel() {
   return currentModel;
@@ -14,7 +15,6 @@ export function getCurrentGeminiModel() {
 export async function generateGeminiResponseWithRetry(prompt, retryDelayMs = 2000) {
   let lastError = null;
 
-  // --- 試行: Gemini 2.5 を RETRY_LIMIT_25 回まで試す ---
   for (let attempt = 0; attempt < RETRY_LIMIT_25; attempt++) {
     try {
       await randomDelay();
@@ -36,19 +36,24 @@ export async function generateGeminiResponseWithRetry(prompt, retryDelayMs = 200
         break;
       }
 
-      if (attempt < RETRY_LIMIT_25 - 1 && isOverloaded) {
-        // 指数バックオフで待つ（例: 2秒, 4秒, 8秒...）
+      if (isOverloaded) {
+        console.warn("⚠️ Gemini 2.5過負荷エラー発生。2.0に切替試行");
+        currentModel = "2.0";
+        lastFallbackTime = Date.now();
+        break;
+      }
+
+      if (attempt < RETRY_LIMIT_25 - 1) {
         const delay = baseRetryDelayMs * Math.pow(2, attempt);
         console.log(`Overload retry: wait ${delay}ms before next attempt`);
         await wait(delay);
       } else {
         break;
-
       }
     }
   }
 
-  // --- フォールバック: Gemini 2.0 ---
+  // フォールバック: Gemini 2.0
   try {
     await randomDelay();
     const response = await generateGeminiResponse20(prompt);
@@ -61,9 +66,8 @@ export async function generateGeminiResponseWithRetry(prompt, retryDelayMs = 200
   }
 }
 
-// 別の場所で定期的に2.5に戻れるか確認する仕組み（例: useEffectで）
 export async function tryRestoreGemini25() {
-  if (currentModel === "2.0" && lastFallbackTime && Date.now() - lastFallbackTime > FALLBACK_TIMEOUT) {
+  if (currentModel === "2.0" && lastFallbackTime && Date.now() - lastFallbackTime > 2 * 60 * 1000) {
     try {
       const result = await generateGeminiResponse25("test");
       if (result && result.trim()) {
@@ -72,10 +76,11 @@ export async function tryRestoreGemini25() {
         lastFallbackTime = null;
       }
     } catch (_) {
-      // still failed
+      // 復帰失敗は無視
     }
   }
 }
+
 
 function isOverloadError(err) {
   const msg = err.message?.toLowerCase() || "";

@@ -121,6 +121,55 @@ const handleTagInputChange = (e) => {
     );
   }
 
+  function renderSideCard(side, entryState) {
+  const isPro = side === "pro";
+  const isUser = entryState.userDebateMode && entryState.userSide === side;
+
+  const personaKey = isPro ? entryState.ai1PersonaKey : entryState.ai2PersonaKey;
+  const personaLabel = isPro ? entryState.ai1PersonaLabel : entryState.ai2PersonaLabel;
+  const aiChar = (isPro ? AI1_CHARACTERS : AI2_CHARACTERS)[personaKey];
+
+  const topLabel = entryState.userDebateMode
+    ? `${isPro ? "賛成" : "反対"}（${isUser ? "あなた" : "AI"}）`
+    : `${isPro ? "賛成" : "反対"}（${isPro ? "AI-1" : "AI-2"}）`;
+
+  const colorClass = isUser
+    ? "bg-yellow-400 text-gray-900"
+    : isPro
+      ? "bg-blue-600 text-white"
+      : "bg-red-600 text-white";
+
+  return (
+    <div
+      key={side}
+      className={`p-4 rounded-xl min-w-[160px] max-w-[240px] text-center shadow-lg ${colorClass}`}
+    >
+      <div className="font-bold text-lg mb-2">{topLabel}</div>
+
+      {isUser ? (
+        <div className="w-24 h-24 mx-auto rounded-full bg-yellow-300 text-gray-900 flex items-center justify-center text-lg font-bold shadow-md mb-2">
+          YOU
+        </div>
+      ) : aiChar?.image ? (
+        <img
+          src={aiChar.image}
+          alt={personaLabel}
+          className="w-24 h-24 mx-auto rounded-full mb-2 object-cover border-2 border-white shadow-md"
+        />
+      ) : (
+        <div className="w-24 h-24 mx-auto rounded-full bg-gray-700 flex items-center justify-center text-white text-xl font-bold mb-2">
+          AI
+        </div>
+      )}
+
+      {!isUser && (
+        <div className="text-sm font-medium mt-1">{personaLabel || "不明"}</div>
+      )}
+    </div>
+  );
+}
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 text-white p-6 pb-24 font-sans relative">
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-50">
@@ -143,44 +192,51 @@ const handleTagInputChange = (e) => {
           </div>
         </section>
 
+        <section className="mb-6">
+          <div className="flex justify-center items-center gap-8 flex-wrap">
+            {/* 賛成カード */}
+            {renderSideCard("pro", entryState)}
+
+            <div
+              className="text-gray-300 font-extrabold text-6xl select-none px-6"
+              style={{
+                transform: "rotate(-15deg)",
+                textShadow: "1px 1px 6px rgba(0, 0, 0, 0.7)",
+                margin: "0 20px",
+                userSelect: "none",
+              }}
+            >
+              VS
+            </div>
+            {/* 反対カード */}
+            {renderSideCard("con", entryState)}
+          </div>
+        </section>
+
         {finalDecision && (
           <div className="mt-3 max-w-md mx-auto rounded-lg bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-700 text-white p-3 shadow-lg text-center font-semibold text-lg sm:text-xl">
             {finalDecision}
           </div>
         )}
+
+
+        {entryState.decidedFirstTurn && (
+          <div className="mt-3 text-center text-indigo-300 font-semibold text-lg">
+            先攻：
+            {entryState.userDebateMode ? (
+              entryState.decidedFirstTurn === "pro"
+                ? entryState.userSide === "pro"
+                  ? "賛成（あなた）"
+                  : "賛成（AI）"
+                : entryState.userSide === "con"
+                  ? "反対（あなた）"
+                  : "反対（AI）"
+            ) : entryState.decidedFirstTurn === "pro"
+              ? "賛成（AI-1）"
+              : "反対（AI-2）"}
+          </div>
+        )}
         
-
-        <section className="mb-6">
-          <h2 className="text-xl font-semibold text-indigo-300 mb-4">AIキャラ選択</h2>
-          <div className="flex gap-6 flex-wrap justify-center">
-            {["ai1PersonaKey", "ai2PersonaKey"].map((key, i) => {
-        const charKey = entryState[key];
-        const label = entryState[key.replace("Key", "Label")];
-        const ai = i === 0 ? "AI-1（賛成）" : "AI-2（反対）";
-        const colorClass = i === 0
-          ? "bg-blue-600 text-blue-100"
-          : "bg-red-600 text-red-100";
-        const image = (i === 0 ? AI1_CHARACTERS : AI2_CHARACTERS)[charKey]?.image;
-
-        return (
-          <div
-            key={i}
-            className={`p-4 rounded-xl flex-1 min-w-[160px] max-w-[240px] text-center shadow-lg ${colorClass}`}
-          >
-            <div className="text-white font-bold text-lg mb-2">{ai}</div>
-            {image && (
-              <img
-                src={image}
-                alt={label}
-                className="w-24 h-24 mx-auto rounded-full mb-2 object-cover border-2 border-white shadow-md"
-              />
-            )}
-            <div className="text-sm font-medium">{label || "不明"}</div>
-          </div>
-        );
-      })}
-          </div>
-        </section>
 
         {entryState.tags?.length > 0 && (
         <section>
@@ -237,7 +293,7 @@ const handleTagInputChange = (e) => {
             <h2 className="text-2xl font-semibold text-indigo-200 mb-4">🌀 応酬フェーズ</h2>
             <div className="flex flex-col">
               {exchangeLogs.map((line, idx) => (
-              <LogBubble key={`exchange-${idx}`} line={line} idx={idx} />
+               <LogBubble key={idx} line={line} userSide={entryState.userSide} />
               ))}
             </div>
           </section>
@@ -248,7 +304,7 @@ const handleTagInputChange = (e) => {
             <h2 className="text-2xl font-semibold text-purple-300 mb-4">🧭 最終意見フェーズ</h2>
             <div className="flex flex-col">
               {finalLogs.map((line, idx) => (
-              <LogBubble key={`final-${idx}`} line={line} idx={idx} />
+              <LogBubble key={idx} line={line} userSide={entryState.userSide} />
               ))}
             </div>
           </section>
@@ -259,7 +315,7 @@ const handleTagInputChange = (e) => {
             <h2 className="text-2xl font-semibold text-green-400 mb-4">🏁 判定フェーズ</h2>
             <div className="flex flex-col">
               {judgeLogs.map((line, idx) => (
-              <LogBubble key={`judge-${idx}`} line={line} idx={idx} />
+              <LogBubble key={idx} line={line} userSide={entryState.userSide} />
               ))}
             </div>
           </section>

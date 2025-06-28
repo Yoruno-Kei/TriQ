@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import CharacterSlider from "./CharacterSlider";
 import StartDebateButton from "./StartDebateButton";
 import { AI1_CHARACTERS, AI2_CHARACTERS } from "./aiCharacters";
@@ -24,19 +24,32 @@ export default function DebateControls({
   ai1ScrollRef,
   ai2ScrollRef,
 }) {
+
+const textareaRef = useRef(null);
+
+  // 高さを内容に応じて調整（トリガーは topic の変更）
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"; // 一度リセット
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`; // 内容に応じて拡張
+    }
+  }, [topic]);
+
+  useEffect(() => {
+  console.log("🧪 userSide (from props):", userSide);
+}, [userSide]);
+
+
   return (
     <div>
       <label className="block text-xl text-indigo-300 mb-2 font-semibold">議題</label>
       <textarea
-        className="w-full resize-none p-4 rounded bg-gray-900 text-white text-lg mb-4 placeholder-gray-500 border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+        ref={textareaRef}
+        className="w-full resize-none p-4 rounded bg-gray-900 text-white text-lg mb-4 placeholder-gray-500 border border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed transition-all duration-100"
         rows={1}
         placeholder="議題を入力..."
         value={topic}
-        onChange={(e) => {
-          setTopic(e.target.value);
-          e.target.style.height = "auto";
-          e.target.style.height = `${e.target.scrollHeight}px`;
-        }}
+        onChange={(e) => setTopic(e.target.value)}
         style={{ overflow: "hidden" }}
       />
 
@@ -77,8 +90,13 @@ export default function DebateControls({
 
         <button
           onClick={() => {
-            setUserDebateMode(!userDebateMode);
-            setUserSide(null);
+            const nextMode = !userDebateMode;
+            setUserDebateMode(nextMode);
+            if (nextMode) {
+              setUserSide("pro"); // VSモードに移行したときのみ初期化
+            } else {
+              setUserSide(null);  // 通常モードに戻すときはクリア
+            }
           }}
           className="ml-auto px-3 py-2 rounded bg-purple-600 text-white font-semibold hover:bg-purple-700"
         >
@@ -94,13 +112,13 @@ export default function DebateControls({
               className={`px-4 py-2 rounded ${userSide === "pro" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-300"}`}
               onClick={() => setUserSide("pro")}
             >
-              賛成側（AI-1）
+              賛成側
             </button>
             <button
               className={`px-4 py-2 rounded ${userSide === "con" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-300"}`}
               onClick={() => setUserSide("con")}
             >
-              反対側（AI-2）
+              反対側
             </button>
           </div>
         </div>

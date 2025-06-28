@@ -43,6 +43,6 @@ export default defineConfig({
 
       }
     },
-    chunkSizeWarningLimit: 1000 // 1MBに警告閾値を増やす（必要に応じて調整）
+    chunkSizeWarningLimit: 1500 // 1MBに警告閾値を増やす（必要に応じて調整）
   }
 });

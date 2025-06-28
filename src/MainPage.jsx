@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { BookOpen, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Award, X } from "lucide-react";
 import Sidebar from "./Sidebar";
 import DebateLog from "./DebateLog";
-import TurnDeciderAnimation from "./TurnDeciderAnimation";
+import TurnDeciderRoulette from "./TurnDeciderAnimation";
 import DebateControls from "./DebateControls";
 import UserInputArea from "./UserInputArea";
 import { getCurrentGeminiModel, tryRestoreGemini25 } from "./geminiWithRetry";
 import { generateDebateTopic } from "./generateTopic";
 import { handleStartDebate as runDebate } from "./handleStartDebate";
+import ToggleSidebarButton from "./ToggleSidebarButton";
+import UserStatsPanel from "./UserStatsPanel";
+import EvaluationPopup from "./EvaluationPopup";
 
 export default function MainPage() {
   const [topic, setTopic] = useState("");
@@ -17,6 +20,7 @@ export default function MainPage() {
   const [finalDecision, setFinalDecision] = useState("");
   const [savedLogs, setSavedLogs] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [filter, setFilter] = useState("all");
   const [typingLog, setTypingLog] = useState(null);
@@ -30,10 +34,10 @@ export default function MainPage() {
   const [isGeneratingTopic, setIsGeneratingTopic] = useState(false);
 
   const [userInput, setUserInput] = useState("");
-  const [isUserTurn, setIsUserTurn] = useState(false);
+  const [isUserInputVisible, setIsUserInputVisible] = useState(false);
 
   const [userDebateMode, setUserDebateMode] = useState(false);
-  const [userSide, setUserSide] = useState(null);
+  const [userSide, setUserSide] = useState("pro");
 
   const [showTurnDecider, setShowTurnDecider] = useState(false);
   const [decidedFirstTurn, setDecidedFirstTurn] = useState(null);
@@ -43,10 +47,32 @@ export default function MainPage() {
   const cooldownTime = 5 * 1000;
 
   const logRef = useRef([]);
+  const userReplyResolver = useRef(null);
+
   const ai1ScrollRef = useRef(null);
   const ai2ScrollRef = useRef(null);
 
   const navigate = useNavigate();
+
+  const [showEvaluationPopup, setShowEvaluationPopup] = useState(false);
+  const [evaluationResult, setEvaluationResult] = useState(null);
+  const [userEvaluationSummary, setUserEvaluationSummary] = useState("");
+
+
+  const [isFinalPhase, setIsFinalPhase] = useState(false);
+
+  const [isEvaluating, setIsEvaluating] = useState(false);
+
+  const waitForUserReply = () => {
+  return new Promise((resolve) => {
+    setIsUserInputVisible(true);
+    userReplyResolver.current = (text) => {
+      setIsUserInputVisible(false);
+      resolve(text); // 生テキストだけ返す（prefixなし）
+    };
+  });
+};
+
 
   useEffect(() => {
     const logs = JSON.parse(localStorage.getItem("triqLogs") || "[]");
@@ -105,34 +131,28 @@ export default function MainPage() {
   };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  const closeSidebar = () => setSidebarOpen(false);
 
-  const typeText = (text, prefix = "", delay = 20) => {
-    return new Promise((resolve) => {
-      let output = "";
-      let i = 0;
-      const interval = setInterval(() => {
-        output += text[i];
-        setTypingLog(prefix + output);
-        i++;
-        if (i >= text.length) {
-          clearInterval(interval);
-          const finalLine = prefix + text;
-          setLog((prev) => [...prev, finalLine]);
-          logRef.current.push(finalLine);
-          setTypingLog(null);
-          resolve();
-        }
-      }, delay);
-    });
-  };
+const typeText = (text, prefix = "", delay = 20) => {
+  return new Promise((resolve) => {
+    let output = "";
+    let i = 0;
+    const interval = setInterval(() => {
+      output += text[i];
+      setTypingLog(prefix + output);
+      i++;
+      if (i >= text.length) {
+        clearInterval(interval);
+        setTypingLog(null);
+        resolve();
+      }
+    }, delay);
+  });
+};
 
   // ユーザー入力送信処理
-  const handleUserSubmit = (text) => {
-    setLog((prev) => [...prev, text]);
-    logRef.current.push(text);
-    setIsUserTurn(false);
-  };
+const handleUserSubmit = (text) => {
+  userReplyResolver.current?.(text); // resolveして進行
+};
 
   // 先攻決定後の処理
   const onTurnDecided = (firstTurnSide) => {
@@ -143,8 +163,9 @@ export default function MainPage() {
 
   // 討論開始時の処理（TurnDeciderを表示してから実際の議論開始はhandleStartDebateで）
   const handleStartDebateWithTurnDecider = () => {
-    setShowTurnDecider(true);
-    setDecidedFirstTurn(null);
+  setIsDebating(true);        // ① アニメーションを即開始
+  setShowTurnDecider(true);   // ② アニメーション（先攻決定）表示
+  setDecidedFirstTurn(null);  // ③ リセット
   };
 
   // 実際に討論開始処理
@@ -162,10 +183,15 @@ export default function MainPage() {
       setSavedLogs,
       setTopic,
       setCurrentTopic,
+      setIsFinalPhase,
       userDebateMode,
       userSide,
-      onUserTurnChange: setIsUserTurn,
       firstTurnSide,
+      waitForUserReply,
+      setIsEvaluating,
+      setUserEvaluationSummary,
+      setEvaluationResult,
+      setShowEvaluationPopup,
     });
   };
 
@@ -176,50 +202,62 @@ export default function MainPage() {
     }
   }, [decidedFirstTurn]);
 
-  // ユーザーの発言の接頭辞
-  const userPrefix = userSide === "pro" ? "【あなた（賛成）】 " : "【あなた（反対）】 ";
-
   return (
     <main
       className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-800 text-white p-6 font-sans relative"
       onClick={handleMainClick}
     >
-    {sidebarOpen && (
-      <div
-        className="fixed inset-0 z-40"
-        onClick={() => setSidebarOpen(false)}
-      >
-      <Sidebar
-        sidebarOpen={sidebarOpen}
-        closeSidebar={() => setSidebarOpen(false)}
-        savedLogs={savedLogs}
-        filteredLogs={savedLogs.filter((log) => {
-          const keywordMatch = log.topic.includes(searchKeyword);
-          const filterMatch =
-            filter === "all"
-              ? true
-              : filter === "pro"
-              ? log.winner.startsWith("AI-1")
-              : filter === "con"
-              ? log.winner.startsWith("AI-2")
-              : log.winner.startsWith("判定不能");
-          const tagMatch = selectedTag === "" || (log.tags || []).includes(selectedTag);
-          return keywordMatch && filterMatch && tagMatch;
-        })}
-        searchKeyword={searchKeyword}
-        setSearchKeyword={setSearchKeyword}
-        filter={filter}
-        setFilter={setFilter}
-        deleteLog={deleteLog}
-        navigate={navigate}
-        selectedTag={selectedTag}
-        setSelectedTag={setSelectedTag}
-      />
-      </div>
-    )}
 
+    {/* 背景オーバーレイ（常に表示してアニメーション制御） */}
+      <div
+        className={`fixed inset-0 bg-black z-40 transition-opacity duration-300 ${
+          sidebarOpen ? "opacity-40 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* サイドバー（常に表示してスライド制御） */}
+      <div
+        className={`fixed top-0 right-0 h-full w-[80vw] max-w-xs bg-gray-950 text-white shadow-lg rounded-l-xl z-50 transition-transform duration-300 ease-in-out transform ${
+          sidebarOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Sidebar
+          sidebarOpen={sidebarOpen}
+          closeSidebar={() => setSidebarOpen(false)}
+          savedLogs={savedLogs}
+          filteredLogs={savedLogs.filter((log) => {
+            const keywordMatch = log.topic.includes(searchKeyword);
+            const filterMatch =
+              filter === "all"
+                ? true
+                : filter === "pro"
+                ? log.winner.startsWith("AI-1")
+                : filter === "con"
+                ? log.winner.startsWith("AI-2")
+                : log.winner.startsWith("判定不能");
+            const tagMatch =
+              selectedTag === "" || (log.tags || []).includes(selectedTag);
+            return keywordMatch && filterMatch && tagMatch;
+          })}
+          searchKeyword={searchKeyword}
+          setSearchKeyword={setSearchKeyword}
+          filter={filter}
+          setFilter={setFilter}
+          deleteLog={deleteLog}
+          navigate={navigate}
+          selectedTag={selectedTag}
+          setSelectedTag={setSelectedTag}
+        />
+      </div>
 
       <div className="max-w-[min(600px,90vw)] mx-auto pt-6" onClick={(e) => e.stopPropagation()}>
+<div
+  className={`transition-all duration-300 ${
+    isDebating ? "pointer-events-none opacity-50 blur-[1px]" : "pointer-events-auto opacity-100"
+  }`}
+>
         <DebateControls
           topic={topic}
           setTopic={setTopic}
@@ -243,17 +281,35 @@ export default function MainPage() {
           ai1ScrollRef={ai1ScrollRef}
           ai2ScrollRef={ai2ScrollRef}
         />
+</div>
 
-        {showTurnDecider && <TurnDeciderAnimation onDecide={onTurnDecided} />}
+        {showTurnDecider && (
+          <TurnDeciderRoulette
+            onDecide={onTurnDecided}
+            userDebateMode={userDebateMode}
+            userSide={userSide}
+          />
+        )}
 
         {decidedFirstTurn && (
           <div className="mt-4 text-center text-indigo-300 font-semibold">
-            先攻決定：{decidedFirstTurn?.label}
+            先攻：
+            {userDebateMode ? (
+              decidedFirstTurn === "pro"
+                ? userSide === "pro"
+                  ? "賛成（あなた）"
+                  : "賛成（AI）"
+                : userSide === "con"
+                  ? "反対（あなた）"
+                  : "反対（AI）"
+            ) : decidedFirstTurn === "pro"
+              ? "賛成（AI-1）"
+              : "反対（AI-2）"}
           </div>
         )}
 
         <div className="fixed bottom-2 left-2 text-xs text-gray-400 select-none pointer-events-none">
-          使用モデル: Gemini {currentModel}
+          使用モデル: Gemini-{currentModel}-flash
         </div>
 
         {currentTopic && (
@@ -262,34 +318,96 @@ export default function MainPage() {
           </div>
         )}
 
+        {typingLog && (
+          <div className="text-center mt-3 text-indigo-200 text-base sm:text-lg font-mono animate-pulse whitespace-pre-wrap">
+            {typingLog}
+          </div>
+        )}
+
+
         {finalDecision && (
           <div className="mt-3 max-w-md mx-auto rounded-lg bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-700 text-white p-3 shadow-lg text-center font-semibold text-lg sm:text-xl">
             {finalDecision}
           </div>
         )}
 
-        <DebateLog log={log} typingLog={typingLog} finalDecision={finalDecision} topic={currentTopic} />
-
-        {isUserTurn && (
-          <UserInputArea
-            userInput={userInput}
-            setUserInput={setUserInput}
-            onSubmit={handleUserSubmit}
-            userPrefix={userPrefix}
+        <DebateLog 
+          log={log} 
+          finalDecision={finalDecision} 
+          topic={currentTopic} 
+          isUserInputVisible={isUserInputVisible} 
+          userSide={userSide}
+          isDebating={isDebating} 
           />
-        )}
+
+{isUserInputVisible && (
+  <UserInputArea
+    isVisible={isUserInputVisible}
+    isFinalPhase={isFinalPhase}
+    userInput={userInput}
+    setUserInput={setUserInput}
+    onSubmit={handleUserSubmit}
+    maxLength={isFinalPhase ? 150 : 75}
+  />
+)}
+
+
       </div>
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleSidebar();
-        }}
-        className="fixed bottom-6 right-6 z-[100] w-16 h-16 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center text-2xl hover:bg-indigo-700 transition"
-        aria-label="ログ表示"
-      >
-        {sidebarOpen ? <X className="w-7 h-7" /> : <BookOpen className="w-7 h-7" />}
-      </button>
+{!isDebating && !showStatsPanel && (
+  <ToggleSidebarButton
+    sidebarOpen={sidebarOpen}
+    toggleSidebar={toggleSidebar}
+  />
+)}
+
+{/* ステータスボタン：サイドバー非表示時のみ出現 */}
+{!sidebarOpen && (
+/* ステータス表示切替ボタン（常に表示、クリックで開閉切替） */
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    setShowStatsPanel((prev) => !prev);
+  }}
+  className={`fixed top-4 right-4 z-50 p-2 rounded-full shadow transition
+    ${showStatsPanel ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}
+  title={showStatsPanel ? "ステータスを閉じる" : "ステータスを見る"}
+>
+  {showStatsPanel ? (
+    <X className="w-10 h-10" />
+  ) : (
+    <Award className="w-10 h-10" />
+  )}
+</button>
+)}
+
+{isEvaluating && !showEvaluationPopup && (
+  <div className="text-center text-gray-600 mt-4 animate-pulse">
+    🧠 評価中です...しばらくお待ちください
+  </div>
+)}
+
+{showEvaluationPopup && evaluationResult && (
+  <EvaluationPopup
+    result={evaluationResult}
+    onClose={() => setShowEvaluationPopup(false)}
+  />
+)}
+
+{/* ステータスパネル */}
+{showStatsPanel && (
+  <div
+    className="fixed inset-0 z-10 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center animate-fade-in"
+    onClick={() => setShowStatsPanel(false)}
+  >
+    <div
+      className="bg-gray-900 rounded-xl max-w-3xl w-[95%] max-h-[95vh] overflow-y-auto p-6 animate-pop"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <UserStatsPanel />
+    </div>
+  </div>
+)}
     </main>
   );
 }
