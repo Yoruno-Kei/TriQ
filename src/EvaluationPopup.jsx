@@ -32,7 +32,6 @@ const leveledUp = previousLevel !== undefined && level > previousLevel;
     { subject: "Expression", value: newScores.expression },
     { subject: "Diversity", value: newScores.diversity },
     { subject: "Depth", value: newScores.depth },
-    { subject: "Total", value: newScores.total },
   ];
 
             console.log("📊 newScores:", newScores);
