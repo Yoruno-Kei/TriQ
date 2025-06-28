@@ -1,4 +1,5 @@
 // userStats.js
+import { TITLE_LIST } from "./titles";
 
 const STORAGE_KEY = "triqUserStats";
 
@@ -31,6 +32,7 @@ export function getDefaultStats() {
     diversity: 0,
     depth: 0,
     history: [],
+    unlockedTitles: [], 
   };
 }
 
@@ -38,7 +40,7 @@ export function getDefaultStats() {
 export function updateUserStats(newScores, summary = "") {
   const current = getUserStats();
 
-  const safe = (n) => Math.max(0, n); // 安全関数
+  const safe = (n) => Math.max(0, n);
 
   const newEntry = {
     timestamp: Date.now(),
@@ -48,7 +50,8 @@ export function updateUserStats(newScores, summary = "") {
       safe(newScores.persuasiveness) +
       safe(newScores.expression) +
       safe(newScores.diversity) +
-      safe(newScores.depth),
+      safe(newScores.depth) +
+      safe(newScores.total),
   };
 
   const updated = {
@@ -59,6 +62,9 @@ export function updateUserStats(newScores, summary = "") {
     depth: newScores.depth,
     history: [...(current.history || []), newEntry],
   };
+
+  const titleInfo = getTitle(updated); // 新たな称号情報
+  updated.unlockedTitles = titleInfo.unlocked;
 
   saveUserStats(updated);
   return updated;
@@ -95,40 +101,47 @@ export function getLevelDetails(stats) {
   const history = stats.history || [];
   const numBattles = history.length;
 
-  // 平均スコア（通常平均）
   const avgScore = numBattles > 0
     ? history.reduce((sum, h) => sum + h.total, 0) / numBattles
     : 0;
 
-  // 重み付き平均（直近重視）
   const weightedAvg = weightedAverageTotal(history);
-
-  // 時間減衰付き重み付き平均（古いバトルは影響減）
   const timeDecayAvg = weightedAverageWithTimeDecay(history);
 
-  // 複合平均スコア（調整可能）
   const combinedAvg = (avgScore * 0.3) + (weightedAvg * 0.4) + (timeDecayAvg * 0.3);
-
-  // 生の経験値（合計スコアに基づく）
   const baseExp = Math.floor((numBattles * combinedAvg) / 5);
   const rawExp = Math.max(0, baseExp);
   const exp = applyExpPenalty(rawExp, history);
 
-  // レベル関連
-  const level = Math.floor(exp / 100);
-  const nextLevelExp = (level + 1) * 100;
-  const currentLevelExp = level * 100;
-  const progress = exp - currentLevelExp;
-  const progressRate = Math.min(1, Math.max(0, progress / 100));
+  // 難化するレベル計算（指数関数的）
+  const getLevelFromExp = (exp) => {
+    let level = 0;
+    let threshold = 100;
+    while (exp >= threshold) {
+      level++;
+      threshold += Math.floor(100 * Math.pow(1.2, level));
+    }
+    return level;
+  };
 
-  // 🔥 前回のレベル（最新バトル前の状態）を履歴から取得
+  const getNextExp = (level) => {
+    let total = 0;
+    for (let i = 0; i <= level; i++) {
+      total += Math.floor(100 * Math.pow(1.2, i));
+    }
+    return total;
+  };
+
+  const level = getLevelFromExp(exp);
+  const nextLevelExp = getNextExp(level + 1);
+  const currentLevelExp = getNextExp(level);
+  const progress = exp - currentLevelExp;
+  const progressRate = Math.min(1, Math.max(0, progress / (nextLevelExp - currentLevelExp)));
+
   const previousExp = numBattles >= 2
-    ? applyExpPenalty(
-        Math.floor(((numBattles - 1) * combinedAvg) / 5),
-        history.slice(0, -1) // 最後のバトルを除いた状態
-      )
+    ? applyExpPenalty(Math.floor(((numBattles - 1) * combinedAvg) / 5), history.slice(0, -1))
     : 0;
-  const previousLevel = Math.floor(previousExp / 100);
+  const previousLevel = getLevelFromExp(previousExp);
 
   return {
     level,
@@ -147,6 +160,7 @@ export function getLevelDetails(stats) {
 
 
 
+
 function applyExpPenalty(baseExp, history) {
   const recent = history.slice(-3); // 直近3回
   const recentAvg = recent.reduce((sum, h) => sum + h.total, 0) / (recent.length || 1);
@@ -160,23 +174,23 @@ function applyExpPenalty(baseExp, history) {
   return Math.max(0, penalizedExp); // 絶対0未満にしない
 }
 
-/** レベルに応じた称号を返す */
-export function getTitle(level) {
-  const titles = [
-    "🍼 ビギナー思考家",
-    "🧠 論理の修行者",
-    "🎯 詭弁マスター",
-    "🔥 思考の錬金術師",
-    "👁 真理の探究者",
-    "🌪️ 多角的分析官",
-    "⚡ 論破の閃光",
-    "🦉 知識の賢者",
-    "🎭 感情コントローラー",
-    "🚀 思考の開拓者",
-  ];
-  // 配列の範囲内に収める
-  const idx = Math.min(titles.length - 1, Math.max(0, level));
-  return titles[idx];
+export function getTitle(stats) {
+  const details = getLevelDetails(stats);
+  const unlocked = new Set(stats.unlockedTitles || []);
+
+  // 条件を満たす称号を絞り込み
+  const eligible = TITLE_LIST.filter((t) => t.condition(stats, details));
+
+  // 新たに解放された称号をセットに追加
+  for (const t of eligible) unlocked.add(t.key);
+
+  // 最も上位（最後）の称号を現在の称号とする
+  const current = eligible.length > 0 ? eligible[eligible.length - 1] : null;
+
+  return {
+    current,
+    unlocked: Array.from(unlocked),
+  };
 }
 
 

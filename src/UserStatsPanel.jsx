@@ -4,8 +4,10 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid
 } from "recharts";
 
-import { getUserStats, getTitle, getLevelDetails } from "./userStats";
+import { getUserStats, getLevelDetails, getTitle } from "./userStats";
+import { TITLE_LIST } from "./titles";
 
+// レーダーチャートコンポーネント
 function RadarStats({ stats }) {
   const data = [
     { stat: "論理力", key: "logic", value: stats.logic },
@@ -17,7 +19,7 @@ function RadarStats({ stats }) {
 
   return (
     <div className="bg-gray-800 p-4 rounded shadow flex flex-col md:flex-row items-center md:items-start gap-4 h-auto">
-      <div className="w-full md:w-2/3 h-64">
+      <div className="w-full md:w-2/3 h-[220px] sm:h-64 md:h-72">
         <h3 className="text-sm mb-2 text-indigo-300">5ステータス分布</h3>
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={data}>
@@ -29,7 +31,6 @@ function RadarStats({ stats }) {
         </ResponsiveContainer>
       </div>
 
-      {/* ステータスの数値表示 */}
       <div className="w-full md:w-1/3 space-y-2 text-sm text-gray-200">
         <h4 className="text-indigo-300 text-sm">現在の数値</h4>
         <ul className="space-y-1">
@@ -45,6 +46,7 @@ function RadarStats({ stats }) {
   );
 }
 
+// 折れ線チャートコンポーネント
 function LineChartScore({ history }) {
   const chartData = history.map((entry) => ({
     date: new Date(entry.timestamp).toLocaleDateString(),
@@ -67,6 +69,7 @@ function LineChartScore({ history }) {
   );
 }
 
+// 総評履歴
 function SummaryList({ history }) {
   return (
     <div className="mt-6 bg-gray-800 p-4 rounded shadow max-h-60 overflow-y-auto">
@@ -83,8 +86,10 @@ function SummaryList({ history }) {
   );
 }
 
+// メインパネル
 export default function UserStatsPanel() {
   const [stats, setStats] = useState(null);
+  const [selectedTitle, setSelectedTitle] = useState(null);
 
   useEffect(() => {
     setStats(getUserStats());
@@ -93,7 +98,6 @@ export default function UserStatsPanel() {
   if (!stats) return null;
 
   const history = stats.history || [];
-
   const {
     level,
     exp,
@@ -101,18 +105,20 @@ export default function UserStatsPanel() {
     progressRate,
     avgScore,
     numBattles,
-  } = getLevelDetails(stats); // 💡 追加
+  } = getLevelDetails(stats);
 
-  const title = getTitle(level);
+  const { current, unlocked } = getTitle(stats);
 
   return (
     <div className="p-4 bg-gray-900 text-white rounded-xl shadow-md max-w-2xl mx-auto space-y-6">
       <h2 className="text-xl font-bold text-indigo-300">🧠 討論スコア</h2>
 
-      {/* 称号＆レベル */}
+      {/* 称号＆レベル表示 */}
       <div className="text-center my-4">
-        <div className="text-indigo-400 text-sm">称号</div>
-        <div className="text-2xl font-bold">{title}</div>
+        <div className="text-indigo-400 text-sm">現在の称号</div>
+        <div className="text-2xl font-bold">
+          {current?.emoji} {current?.title}
+        </div>
         <div className="text-sm text-gray-400">
           レベル: {level}（Exp: {exp} / {nextLevelExp}）
         </div>
@@ -120,7 +126,6 @@ export default function UserStatsPanel() {
           平均スコア: {avgScore}・討論数: {numBattles}
         </div>
 
-        {/* 💡 進行ゲージ */}
         <div className="w-full bg-gray-700 rounded mt-2 h-3">
           <div
             className="bg-indigo-500 h-3 rounded transition-all"
@@ -129,13 +134,39 @@ export default function UserStatsPanel() {
         </div>
       </div>
 
-      {/* 五角形レーダーチャート */}
+{/* 過去に獲得した称号 */}
+<div className="text-sm text-indigo-300 mt-4">
+  <div className="mb-2">獲得した称号：</div>
+  <div className="flex flex-wrap gap-2 justify-center">
+    {TITLE_LIST.filter(t => unlocked.includes(t.key)).map((t) => (
+      <div key={t.key} className="flex flex-col items-center text-center">
+        <button
+          onClick={() => setSelectedTitle(t)}
+          className="text-xl hover:scale-110 transition-transform"
+          title={t.title}
+        >
+          {t.emoji}
+        </button>
+      </div>
+    ))}
+  </div>
+  {selectedTitle && (
+  <div className="mt-3 p-3 bg-gray-800 rounded shadow text-left max-w-sm mx-auto">
+    <div className="font-bold text-indigo-300 text-base mb-1">
+      {selectedTitle.emoji} {selectedTitle.title}
+    </div>
+    <div className="text-gray-300 text-sm mb-2">
+      {selectedTitle.description}
+    </div>
+    <div className="text-xs text-gray-500 italic">
+      獲得条件：{selectedTitle.conditionDescription || "不明"}
+    </div>
+  </div>
+)}
+</div>
+
       <RadarStats stats={stats} />
-
-      {/* 総合スコア推移の折れ線グラフ */}
       <LineChartScore history={history} />
-
-      {/* AIの総合コメント履歴 */}
       <SummaryList history={history} />
     </div>
   );

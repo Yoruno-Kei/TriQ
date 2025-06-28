@@ -1,6 +1,11 @@
 import React from "react";
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ResponsiveContainer,
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,6 +21,7 @@ export default function EvaluationPopup({ result, onClose }) {
     { subject: "Expression", value: newScores.expression },
     { subject: "Diversity", value: newScores.diversity },
     { subject: "Depth", value: newScores.depth },
+    { subject: "Total", value: newScores.total },
   ];
 
   return (
@@ -24,18 +30,17 @@ export default function EvaluationPopup({ result, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
           transition={{ type: "spring", duration: 0.5 }}
-          className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md text-center relative"
+          className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md md:max-w-lg text-center relative"
         >
           <h2 className="text-2xl font-bold text-gray-800 mb-1">🧠 今回の討論評価</h2>
 
-          {/* 🎉 レベルアップ演出 */}
           {leveledUp && (
             <motion.div
               className="text-pink-600 font-bold text-lg mb-1"
@@ -47,7 +52,6 @@ export default function EvaluationPopup({ result, onClose }) {
             </motion.div>
           )}
 
-          {/* 称号 */}
           <motion.p
             className="text-lg font-semibold text-indigo-600 mb-2"
             initial={{ scale: 0 }}
@@ -57,14 +61,22 @@ export default function EvaluationPopup({ result, onClose }) {
             🌟 {title}（Lv.{levelInfo.level}）
           </motion.p>
 
-          {/* レーダーチャート */}
-          <div className="flex justify-center mb-4">
-            <RadarChart cx="50%" cy="50%" outerRadius="80" width={300} height={250} data={data}>
-              <PolarGrid />
-              <PolarAngleAxis dataKey="subject" />
-              <PolarRadiusAxis domain={[0, 100]} />
-              <Radar name="スコア" dataKey="value" stroke="#4f46e5" fill="#6366f1" fillOpacity={0.5} />
-            </RadarChart>
+          {/* レーダーチャート（レスポンシブ） */}
+          <div className="w-full h-[250px] mb-4">
+            <ResponsiveContainer>
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="subject" />
+                <PolarRadiusAxis domain={[0, 100]} />
+                <Radar
+                  name="スコア"
+                  dataKey="value"
+                  stroke="#4f46e5"
+                  fill="#6366f1"
+                  fillOpacity={0.5}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
           </div>
 
           {/* 経験値バー */}
@@ -89,7 +101,8 @@ export default function EvaluationPopup({ result, onClose }) {
               {Object.entries(changes).map(([key, value]) =>
                 key !== "total" ? (
                   <li key={key}>
-                    {key[0].toUpperCase() + key.slice(1)}: {value >= 0 ? "+" : ""}{value}
+                    {key[0].toUpperCase() + key.slice(1)}: {value >= 0 ? "+" : ""}
+                    {value}
                   </li>
                 ) : null
               )}
@@ -103,6 +116,7 @@ export default function EvaluationPopup({ result, onClose }) {
             <p>{summary}</p>
           </div>
 
+          {/* 閉じるボタン */}
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={onClose}

@@ -1,6 +1,8 @@
 export function generateEvaluationPrompt({ topic, debateSummary, explanation }) {
   return `
 あなたは討論評価AIです。以下の討論ログを読み、ユーザーの討論力を5つの観点で100点満点で評価をしてください。
+総評は良かった点、改善すると伸びるだろう点が含まれるとなおよい。
+点数は辛口で付けてください。
 履歴内の”あなた：”がユーザーの発言のターン。
 
 【議題】
@@ -18,6 +20,7 @@ Persuasiveness（説得力）: 相手を納得させられるか
 Expression（表現力）: 言葉遣いや明瞭さ
 Diversity（多様性）: 多角的な視点があるか
 Depth（深さ）: 表面的でなく、深い洞察があるか
+Total (総合) : 全体の総合得点
 
 【出力形式（厳守）】
 Logic: <0〜100>
@@ -25,6 +28,7 @@ Persuasiveness: <0〜100>
 Expression: <0〜100>
 Diversity: <0〜100>
 Depth: <0〜100>
-Summary: <簡潔な総評(良かった点/悪かった点)（100文字以内）>
+Total: <0〜100>
+Summary: <簡潔な総評（100文字以内）>
 `;
 }

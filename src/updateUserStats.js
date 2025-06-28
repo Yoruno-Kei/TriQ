@@ -23,6 +23,7 @@ export async function evaluateAndUpdateUserStats({ topic, debateSummary, explana
     expression: parseScore(response, "Expression"),
     diversity: parseScore(response, "Diversity"),
     depth: parseScore(response, "Depth"),
+    total: parseScore(response, "Total"),
   };
 
   const summary = parseSummary(response);
