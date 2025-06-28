@@ -193,21 +193,24 @@ const handleTagInputChange = (e) => {
         </section>
 
         <section className="mb-6">
-          <div className="flex justify-center items-center gap-8 flex-wrap">
+          <div className="relative flex justify-center items-center gap-8 flex-wrap max-w-3xl mx-auto">
             {/* 賛成カード */}
             {renderSideCard("pro", entryState)}
 
+            {/* VS文字（中央重ね） */}
             <div
-              className="text-gray-300 font-extrabold text-6xl select-none px-6"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-300 font-extrabold text-6xl select-none pointer-events-none"
               style={{
-                transform: "rotate(-15deg)",
+                transform: "translate(-50%, -50%) rotate(-15deg)",
                 textShadow: "1px 1px 6px rgba(0, 0, 0, 0.7)",
-                margin: "0 20px",
                 userSelect: "none",
+                zIndex: 10,
+                whiteSpace: "nowrap",
               }}
             >
               VS
             </div>
+
             {/* 反対カード */}
             {renderSideCard("con", entryState)}
           </div>
